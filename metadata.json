@@ -1,0 +1,5 @@
+{
+  "name": "DevConsole: Task Tracker",
+  "description": "A retro-terminal styled task management system for development teams. Features user management, task tracking with status workflows, image attachments, and AI-powered task analysis using Gemini.",
+  "requestFramePermissions": []
+}

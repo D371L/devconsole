@@ -1,0 +1,135 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DevConsole System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              neon: {
+                main: 'var(--neon-primary)', // Dynamic Color
+                cyan: '#00f3ff',
+                purple: '#bd00ff',
+                green: '#00ff00',
+                amber: '#ffbf00',
+                pink: '#ff0055'
+              }
+            },
+            animation: {
+                'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            }
+          }
+        }
+      }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --bg-primary: #f9fafb;
+        --text-primary: #111827;
+        --neon-primary: #00f3ff; /* Default */
+      }
+      
+      .dark {
+        --bg-primary: #050505;
+        --text-primary: #e5e7eb;
+      }
+      
+      body {
+        background-color: var(--bg-primary);
+        color: var(--text-primary);
+        font-family: 'JetBrains Mono', monospace;
+        overflow: hidden;
+        transition: background-color 0.3s ease, color 0.3s ease;
+      }
+
+      /* Scrollbars */
+      ::-webkit-scrollbar {
+        width: 8px;
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 4px;
+      }
+      .dark ::-webkit-scrollbar-thumb {
+        background: #333;
+        border: 1px solid #000;
+      }
+      .dark ::-webkit-scrollbar-thumb:hover {
+        background: var(--neon-primary);
+      }
+
+      /* Dark Mode Effects */
+      .dark .neon-text-main {
+        text-shadow: 0 0 5px var(--neon-primary), 0 0 10px var(--neon-primary);
+      }
+      
+      .dark .neon-border-main {
+        border-color: var(--neon-primary);
+        box-shadow: 0 0 5px var(--neon-primary);
+      }
+
+      .dark .neon-text-cyan { text-shadow: 0 0 5px rgba(0, 243, 255, 0.5); }
+      .dark .neon-text-purple { text-shadow: 0 0 5px rgba(189, 0, 255, 0.5); }
+      .dark .neon-text-green { text-shadow: 0 0 5px rgba(0, 255, 0, 0.5); }
+      
+      /* CRT Scanline Overlay only in Dark Mode */
+      .dark .scanlines {
+        background: linear-gradient(
+          to bottom,
+          rgba(255,255,255,0),
+          rgba(255,255,255,0) 50%,
+          rgba(0,0,0,0.2) 50%,
+          rgba(0,0,0,0.2)
+        );
+        background-size: 100% 4px;
+        position: fixed;
+        pointer-events: none;
+        inset: 0;
+        z-index: 50;
+        opacity: 0.15;
+      }
+
+      .terminal-cursor {
+          display: inline-block;
+          width: 10px;
+          height: 1.2em;
+          background-color: var(--neon-primary);
+          animation: blink 1s step-end infinite;
+          vertical-align: text-bottom;
+      }
+
+      @keyframes blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0; }
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.10.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
+    "react/": "https://aistudiocdn.com/react@^19.2.1/",
+    "react": "https://aistudiocdn.com/react@^19.2.1",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.31.0",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.39.3"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+    <div class="scanlines"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
