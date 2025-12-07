@@ -1,0 +1,28 @@
+name: devconsole
+region: nyc
+
+# Frontend - Static Site (React App)
+static_sites:
+  - name: devconsole-frontend
+    github:
+      repo: YOUR_GITHUB_USERNAME/YOUR_REPO_NAME
+      branch: main
+      deploy_on_push: true
+    build_command: npm install && npm run build
+    output_dir: dist
+    environment_slug: node-js
+    envs:
+      - key: GEMINI_API_KEY
+        scope: RUN_TIME
+        type: SECRET
+    routes:
+      - path: /
+    catchall_document: index.html
+
+# Database - PostgreSQL (Optional, for future use)
+databases:
+  - name: devconsole-db
+    engine: PG
+    production: false
+    version: "16"
+    cluster_name: devconsole-db-cluster
