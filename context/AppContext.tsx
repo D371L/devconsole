@@ -43,38 +43,25 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Check if API is available
+  // Check if API is available - check synchronously first to avoid loading from LocalStorage
   const [useAPI, setUseAPI] = useState(false);
   const [apiChecked, setApiChecked] = useState(false);
+  const [isCheckingAPI, setIsCheckingAPI] = useState(true);
 
-  // Load initial state from LocalStorage or fall back to Constants
-  const [users, setUsers] = useState<User[]>(() => {
-      const saved = localStorage.getItem('devterm_users');
-      return saved ? JSON.parse(saved) : INITIAL_USERS;
-  });
-  
-  const [tasks, setTasks] = useState<Task[]>(() => {
-      const saved = localStorage.getItem('devterm_tasks');
-      return saved ? JSON.parse(saved) : INITIAL_TASKS;
-  });
+  // Start with empty arrays if we're checking API, to avoid showing LocalStorage data
+  // If API is not available, we'll load from LocalStorage in useEffect
+  const [users, setUsers] = useState<User[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [snippets, setSnippets] = useState<Snippet[]>([]);
 
-  const [projects, setProjects] = useState<Project[]>(() => {
-      const saved = localStorage.getItem('devterm_projects');
-      return saved ? JSON.parse(saved) : INITIAL_PROJECTS;
-  });
-
-  const [snippets, setSnippets] = useState<Snippet[]>(() => {
-      const saved = localStorage.getItem('devterm_snippets');
-      return saved ? JSON.parse(saved) : INITIAL_SNIPPETS;
-  });
-
-  // Check API availability on mount
+  // Load data from API only - NO LocalStorage for data
   useEffect(() => {
-    const checkAPI = async () => {
+    const loadData = async () => {
       try {
         await apiService.healthCheck();
         setUseAPI(true);
-        // Load data from API
+        // API is available - load data from API only
         try {
           const [apiUsers, apiTasks, apiProjects, apiSnippets] = await Promise.all([
             apiService.getUsers().catch(() => []),
@@ -82,21 +69,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             apiService.getProjects().catch(() => []),
             apiService.getSnippets().catch(() => [])
           ]);
-          if (apiUsers.length > 0) setUsers(apiUsers);
-          if (apiTasks.length > 0) setTasks(apiTasks);
-          if (apiProjects.length > 0) setProjects(apiProjects);
-          if (apiSnippets.length > 0) setSnippets(apiSnippets);
+          // Always use API data, even if empty - fallback to INITIAL only if API returns empty
+          setUsers(apiUsers.length > 0 ? apiUsers : INITIAL_USERS);
+          setTasks(apiTasks);
+          setProjects(apiProjects);
+          setSnippets(apiSnippets);
         } catch (err) {
-          console.warn('Failed to load from API, using LocalStorage fallback');
+          console.error('Failed to load from API:', err);
+          // If API fails, use initial constants only (NO LocalStorage)
+          setUsers(INITIAL_USERS);
+          setTasks(INITIAL_TASKS);
+          setProjects(INITIAL_PROJECTS);
+          setSnippets(INITIAL_SNIPPETS);
         }
       } catch (error) {
-        console.warn('API not available, using LocalStorage');
+        console.error('API not available:', error);
         setUseAPI(false);
+        // API not available - use initial constants only (NO LocalStorage)
+        setUsers(INITIAL_USERS);
+        setTasks(INITIAL_TASKS);
+        setProjects(INITIAL_PROJECTS);
+        setSnippets(INITIAL_SNIPPETS);
       } finally {
         setApiChecked(true);
+        setIsCheckingAPI(false);
       }
     };
-    checkAPI();
+    loadData();
   }, []);
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -107,81 +106,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [digitalRainMode, setDigitalRainMode] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  // Persistence Effects (Save on Change) - API or LocalStorage
+  // Persistence Effects - API only, NO LocalStorage
   useEffect(() => {
-    if (!apiChecked) return;
-    if (useAPI) {
-      // Sync to API in background
-      users.forEach(user => {
-        apiService.updateUser(user.id, user).catch(err => console.error('Failed to sync user:', err));
-      });
-    } else {
-      localStorage.setItem('devterm_users', JSON.stringify(users));
-    }
+    if (!apiChecked || !useAPI) return;
+    // Sync to API in background - NO LocalStorage
+    users.forEach(user => {
+      apiService.updateUser(user.id, user).catch(err => console.error('Failed to sync user:', err));
+    });
   }, [users, useAPI, apiChecked]);
 
   useEffect(() => {
-    if (!apiChecked) return;
-    if (useAPI) {
-      tasks.forEach(task => {
-        apiService.updateTask(task.id, task).catch(err => console.error('Failed to sync task:', err));
-      });
-    } else {
-      localStorage.setItem('devterm_tasks', JSON.stringify(tasks));
-    }
+    if (!apiChecked || !useAPI) return;
+    // Sync to API in background - NO LocalStorage
+    tasks.forEach(task => {
+      apiService.updateTask(task.id, task).catch(err => console.error('Failed to sync task:', err));
+    });
   }, [tasks, useAPI, apiChecked]);
 
-  useEffect(() => {
-    if (!apiChecked) return;
-    if (!useAPI) {
-      localStorage.setItem('devterm_projects', JSON.stringify(projects));
-    }
-  }, [projects, useAPI, apiChecked]);
+  // Load Settings - NO LocalStorage, use defaults only
+  // Settings are not persisted, always use defaults
 
-  useEffect(() => {
-    if (!apiChecked) return;
-    if (!useAPI) {
-      localStorage.setItem('devterm_snippets', JSON.stringify(snippets));
-    }
-  }, [snippets, useAPI, apiChecked]);
-
-  // Load Settings
-  useEffect(() => {
-    const storedUser = localStorage.getItem('devterm_current_user_id');
-    if (storedUser) {
-        const foundUser = users.find(u => u.id === storedUser);
-        if (foundUser) setCurrentUser(foundUser);
-    }
-
-    const storedTheme = localStorage.getItem('devterm_theme') as 'light' | 'dark';
-    if (storedTheme) setTheme(storedTheme);
-
-    const storedColor = localStorage.getItem('devterm_color') as AccentColor;
-    if (storedColor) setAccentColorState(storedColor);
-
-    const storedSound = localStorage.getItem('devterm_sound');
-    if (storedSound !== null) setSoundEnabled(storedSound === 'true');
-  }, []);
-
-  // Theme Application
+  // Theme Application - NO LocalStorage
   useEffect(() => {
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
     }
-    localStorage.setItem('devterm_theme', theme);
+    // NO LocalStorage - settings are not persisted
   }, [theme]);
 
   const setAccentColor = (color: AccentColor) => {
       setAccentColorState(color);
-      localStorage.setItem('devterm_color', color);
+      // NO LocalStorage - settings are not persisted
       SoundService.playClick();
   };
 
   useEffect(() => {
       SoundService.setMuted(!soundEnabled);
-      localStorage.setItem('devterm_sound', String(soundEnabled));
+      // NO LocalStorage - settings are not persisted
   }, [soundEnabled]);
 
   // Achievement Logic
@@ -248,7 +211,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const user = users.find(u => u.username === username);
     if (user && user.password === password) {
       setCurrentUser(user);
-      localStorage.setItem('devterm_current_user_id', user.id);
+      // NO LocalStorage - current user is not persisted
       showNotification(`Welcome back, ${user.username}`, 'success');
       return true;
     }
@@ -258,7 +221,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const logout = () => {
     setCurrentUser(null);
-    localStorage.removeItem('devterm_current_user_id');
+    // NO LocalStorage - current user is not persisted
     showNotification('Logged out successfully', 'info');
   };
 

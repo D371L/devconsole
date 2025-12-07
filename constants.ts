@@ -8,94 +8,16 @@ export const INITIAL_USERS: User[] = [
     password: 'password', // Mock password
     role: Role.ADMIN,
     avatar: 'https://api.dicebear.com/9.x/pixel-art/svg?seed=admin_core',
-    xp: 12500,
-    achievements: ['a1']
-  },
-  {
-    id: 'u2',
-    username: 'dev_jane',
-    password: 'password',
-    role: Role.DEVELOPER,
-    avatar: 'https://api.dicebear.com/9.x/pixel-art/svg?seed=jane_dev',
-    xp: 4500,
-    achievements: []
-  },
-  {
-    id: 'u3',
-    username: 'dev_john',
-    password: 'password',
-    role: Role.DEVELOPER,
-    avatar: 'https://api.dicebear.com/9.x/pixel-art/svg?seed=john_dev',
-    xp: 1200,
+    xp: 0,
     achievements: []
   }
 ];
 
-export const INITIAL_PROJECTS: Project[] = [
-    { id: 'p1', name: 'Alpha Core', color: '#00f3ff' },
-    { id: 'p2', name: 'Project Titan', color: '#bd00ff' },
-    { id: 'p3', name: 'Legacy Systems', color: '#ffbf00' }
-];
+export const INITIAL_PROJECTS: Project[] = [];
 
-export const INITIAL_TASKS: Task[] = [
-  {
-    id: 't1',
-    title: 'Initialize System Core',
-    description: 'Setup the main React repository and install Tailwind CSS.',
-    projectId: 'p1',
-    createdBy: 'u1',
-    assignedTo: 'u2',
-    createdAt: Date.now(),
-    deadline: '2024-12-31',
-    status: TaskStatus.DONE,
-    priority: Priority.HIGH,
-    attachments: [],
-    subtasks: [
-        { id: 'st1', title: 'Install Dependencies', completed: true },
-        { id: 'st2', title: 'Configure Tailwind', completed: true }
-    ],
-    comments: [
-      { id: 'c1', userId: 'u2', text: 'Core systems online. Ready for modules.', timestamp: Date.now() - 100000 }
-    ],
-    activityLog: [
-      { id: 'l1', userId: 'u1', action: 'Created task', timestamp: Date.now() - 200000 },
-      { id: 'l2', userId: 'u2', action: 'Changed status to DONE', timestamp: Date.now() - 100000 }
-    ],
-    timeSpent: 3600, // 1 hour
-    timerStartedAt: null
-  },
-  {
-    id: 't2',
-    title: 'Implement Auth Module',
-    description: 'Create secure login/logout flow with JWT handling.',
-    projectId: 'p1',
-    createdBy: 'u1',
-    assignedTo: 'u2',
-    createdAt: Date.now(),
-    deadline: '2025-01-15',
-    status: TaskStatus.IN_PROGRESS,
-    priority: Priority.CRITICAL,
-    attachments: [],
-    subtasks: [],
-    comments: [],
-    activityLog: [
-       { id: 'l3', userId: 'u1', action: 'Created task', timestamp: Date.now() }
-    ],
-    timeSpent: 0,
-    timerStartedAt: null
-  }
-];
+export const INITIAL_TASKS: Task[] = [];
 
-export const INITIAL_SNIPPETS: Snippet[] = [
-    {
-        id: 's1',
-        title: 'React UseEffect Hook',
-        language: 'typescript',
-        code: 'useEffect(() => {\n  console.log("Mounted");\n  return () => console.log("Unmounted");\n}, []);',
-        createdBy: 'u1',
-        timestamp: Date.now()
-    }
-];
+export const INITIAL_SNIPPETS: Snippet[] = [];
 
 export const STATUS_COLORS: Record<TaskStatus, string> = {
   [TaskStatus.TODO]: 'text-gray-400 border-gray-400',

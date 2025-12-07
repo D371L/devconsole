@@ -4,7 +4,6 @@ import { useApp } from '../context/AppContext';
 import { TerminalButton, TerminalCard, TerminalInput } from '../components/TerminalUI';
 import { Role, User } from '../types';
 import { SoundService } from '../services/soundService';
-import { saveSupabaseConfig, clearSupabaseConfig, isSupabaseConfigured } from '../services/supabaseClient';
 
 export const AdminPanel: React.FC = () => {
   const { users, addUser, deleteUser, currentUser, showNotification } = useApp();
@@ -16,10 +15,6 @@ export const AdminPanel: React.FC = () => {
     role: Role.DEVELOPER
   });
 
-  // DB Config State
-  const [dbUrl, setDbUrl] = useState(localStorage.getItem('devterm_supabase_url') || '');
-  const [dbKey, setDbKey] = useState(localStorage.getItem('devterm_supabase_key') || '');
-  const isDbActive = isSupabaseConfigured();
 
   // Avatar State
   const [avatarMode, setAvatarMode] = useState<'RANDOM' | 'UPLOAD'>('RANDOM');
@@ -80,77 +75,10 @@ export const AdminPanel: React.FC = () => {
     SoundService.playSuccess();
   };
 
-  const handleDbConnect = (e: React.FormEvent) => {
-      e.preventDefault();
-      if (!dbUrl || !dbKey) {
-          showNotification("Missing Database Credentials", "error");
-          return;
-      }
-      saveSupabaseConfig(dbUrl, dbKey);
-      SoundService.playSuccess();
-  };
-
-  const handleDbDisconnect = () => {
-      if(window.confirm('Disconnect from Database Uplink? System will revert to Local Storage.')) {
-        clearSupabaseConfig();
-        SoundService.playNotification();
-      }
-  };
 
   return (
     <div className="animate-fade-in space-y-8">
       <h2 className="text-3xl font-bold text-gray-900 dark:text-white dark:neon-text-green">SYSTEM ADMINISTRATION</h2>
-
-      {/* Database Uplink Section */}
-      <TerminalCard title="DATABASE_UPLINK [SUPABASE]" neonColor={isDbActive ? 'green' : 'cyan'}>
-        <div className="flex flex-col md:flex-row gap-6 items-start">
-            <div className={`p-4 border-2 rounded dark:rounded-none flex flex-col items-center justify-center w-full md:w-48 h-32 ${isDbActive ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : 'border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900'}`}>
-                <div className={`text-4xl mb-2 ${isDbActive ? 'text-green-500 animate-pulse' : 'text-gray-400'}`}>
-                    {isDbActive ? '⚡' : '⛔'}
-                </div>
-                <div className="text-xs font-bold font-mono uppercase tracking-widest text-gray-600 dark:text-gray-400">
-                    {isDbActive ? 'ONLINE' : 'OFFLINE'}
-                </div>
-            </div>
-
-            <form onSubmit={handleDbConnect} className="flex-1 space-y-4 w-full">
-                <div>
-                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-500 uppercase tracking-wider mb-2">API Endpoint (URL)</label>
-                    <TerminalInput 
-                        value={dbUrl}
-                        onChange={e => setDbUrl(e.target.value)}
-                        placeholder="https://xyz.supabase.co"
-                        type="password"
-                        disabled={isDbActive}
-                    />
-                </div>
-                <div>
-                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-500 uppercase tracking-wider mb-2">Public Anon Key</label>
-                    <TerminalInput 
-                        value={dbKey}
-                        onChange={e => setDbKey(e.target.value)}
-                        placeholder="eyJh..."
-                        type="password"
-                        disabled={isDbActive}
-                    />
-                </div>
-                <div className="flex justify-end gap-4">
-                    {isDbActive ? (
-                        <TerminalButton type="button" variant="danger" onClick={handleDbDisconnect}>
-                            SEVER CONNECTION
-                        </TerminalButton>
-                    ) : (
-                        <TerminalButton type="submit" variant="primary">
-                            ESTABLISH LINK
-                        </TerminalButton>
-                    )}
-                </div>
-                <p className="text-[10px] text-gray-400 font-mono">
-                    * Connection requires Supabase Project. Data migration from LocalStorage must be performed manually via SQL.
-                </p>
-            </form>
-        </div>
-      </TerminalCard>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Create User */}

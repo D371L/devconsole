@@ -65,17 +65,10 @@ CREATE INDEX IF NOT EXISTS idx_snippets_created_by ON snippets(created_by);
 CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 
 -- Insert initial data (optional - matching constants.ts)
+-- Only admin user with zero XP and no achievements (like a new user)
 INSERT INTO users (id, username, password, role, avatar, xp, achievements) VALUES
-    ('u1', 'admin', 'password', 'ADMIN', 'https://api.dicebear.com/9.x/pixel-art/svg?seed=admin_core', 12500, ARRAY['a1']),
-    ('u2', 'dev_jane', 'password', 'DEVELOPER', 'https://api.dicebear.com/9.x/pixel-art/svg?seed=jane_dev', 4500, ARRAY[]::TEXT[]),
-    ('u3', 'dev_john', 'password', 'DEVELOPER', 'https://api.dicebear.com/9.x/pixel-art/svg?seed=john_dev', 1200, ARRAY[]::TEXT[])
+    ('u1', 'admin', 'password', 'ADMIN', 'https://api.dicebear.com/9.x/pixel-art/svg?seed=admin_core', 0, ARRAY[]::TEXT[])
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO projects (id, name, color) VALUES
-    ('p1', 'Alpha Core', '#00f3ff'),
-    ('p2', 'Project Titan', '#bd00ff'),
-    ('p3', 'Legacy Systems', '#ffbf00')
-ON CONFLICT (id) DO NOTHING;
-
--- Note: Initial tasks and snippets can be inserted manually or via API
+-- Projects, tasks and snippets will be created by users via the application
 
