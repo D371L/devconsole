@@ -12,6 +12,9 @@ static_sites:
     output_dir: dist
     environment_slug: node-js
     envs:
+      - key: VITE_API_URL
+        scope: RUN_TIME
+        value: ${devconsole-api.PUBLIC_URL}
       - key: GEMINI_API_KEY
         scope: RUN_TIME
         type: SECRET
@@ -19,10 +22,39 @@ static_sites:
       - path: /
     catchall_document: index.html
 
-# Database - PostgreSQL (Optional, for future use)
+# Backend API - Web Service
+services:
+  - name: devconsole-api
+    github:
+      repo: YOUR_GITHUB_USERNAME/YOUR_REPO_NAME
+      branch: main
+      deploy_on_push: true
+    source_dir: backend
+    build_command: npm install
+    run_command: npm start
+    environment_slug: node-js
+    http_port: 8080
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    envs:
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: ${devconsole-db.DATABASE_URL}
+      - key: GEMINI_API_KEY
+        scope: RUN_TIME
+        type: SECRET
+      - key: NODE_ENV
+        scope: RUN_TIME
+        value: production
+      - key: PORT
+        scope: RUN_TIME
+        value: "8080"
+    routes:
+      - path: /api
+
+# Database - PostgreSQL
 databases:
   - name: devconsole-db
     engine: PG
-    production: false
+    production: true
     version: "16"
-    cluster_name: devconsole-db-cluster

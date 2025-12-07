@@ -4,6 +4,7 @@ import { User, Task, Role, Notification, Priority, Snippet, TaskStatus, Project 
 import { INITIAL_USERS, INITIAL_TASKS, INITIAL_SNIPPETS, ACHIEVEMENTS, INITIAL_PROJECTS } from '../constants';
 import { NotificationToast } from '../components/TerminalUI';
 import { SoundService } from '../services/soundService';
+import { apiService } from '../services/apiService';
 
 export type AccentColor = 'cyan' | 'purple' | 'green' | 'amber' | 'pink';
 
@@ -42,6 +43,10 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Check if API is available
+  const [useAPI, setUseAPI] = useState(false);
+  const [apiChecked, setApiChecked] = useState(false);
+
   // Load initial state from LocalStorage or fall back to Constants
   const [users, setUsers] = useState<User[]>(() => {
       const saved = localStorage.getItem('devterm_users');
@@ -63,6 +68,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return saved ? JSON.parse(saved) : INITIAL_SNIPPETS;
   });
 
+  // Check API availability on mount
+  useEffect(() => {
+    const checkAPI = async () => {
+      try {
+        await apiService.healthCheck();
+        setUseAPI(true);
+        // Load data from API
+        try {
+          const [apiUsers, apiTasks, apiProjects, apiSnippets] = await Promise.all([
+            apiService.getUsers().catch(() => []),
+            apiService.getTasks().catch(() => []),
+            apiService.getProjects().catch(() => []),
+            apiService.getSnippets().catch(() => [])
+          ]);
+          if (apiUsers.length > 0) setUsers(apiUsers);
+          if (apiTasks.length > 0) setTasks(apiTasks);
+          if (apiProjects.length > 0) setProjects(apiProjects);
+          if (apiSnippets.length > 0) setSnippets(apiSnippets);
+        } catch (err) {
+          console.warn('Failed to load from API, using LocalStorage fallback');
+        }
+      } catch (error) {
+        console.warn('API not available, using LocalStorage');
+        setUseAPI(false);
+      } finally {
+        setApiChecked(true);
+      }
+    };
+    checkAPI();
+  }, []);
+
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [accentColor, setAccentColorState] = useState<AccentColor>('cyan');
@@ -71,11 +107,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [digitalRainMode, setDigitalRainMode] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  // Persistence Effects (Save on Change)
-  useEffect(() => localStorage.setItem('devterm_users', JSON.stringify(users)), [users]);
-  useEffect(() => localStorage.setItem('devterm_tasks', JSON.stringify(tasks)), [tasks]);
-  useEffect(() => localStorage.setItem('devterm_projects', JSON.stringify(projects)), [projects]);
-  useEffect(() => localStorage.setItem('devterm_snippets', JSON.stringify(snippets)), [snippets]);
+  // Persistence Effects (Save on Change) - API or LocalStorage
+  useEffect(() => {
+    if (!apiChecked) return;
+    if (useAPI) {
+      // Sync to API in background
+      users.forEach(user => {
+        apiService.updateUser(user.id, user).catch(err => console.error('Failed to sync user:', err));
+      });
+    } else {
+      localStorage.setItem('devterm_users', JSON.stringify(users));
+    }
+  }, [users, useAPI, apiChecked]);
+
+  useEffect(() => {
+    if (!apiChecked) return;
+    if (useAPI) {
+      tasks.forEach(task => {
+        apiService.updateTask(task.id, task).catch(err => console.error('Failed to sync task:', err));
+      });
+    } else {
+      localStorage.setItem('devterm_tasks', JSON.stringify(tasks));
+    }
+  }, [tasks, useAPI, apiChecked]);
+
+  useEffect(() => {
+    if (!apiChecked) return;
+    if (!useAPI) {
+      localStorage.setItem('devterm_projects', JSON.stringify(projects));
+    }
+  }, [projects, useAPI, apiChecked]);
+
+  useEffect(() => {
+    if (!apiChecked) return;
+    if (!useAPI) {
+      localStorage.setItem('devterm_snippets', JSON.stringify(snippets));
+    }
+  }, [snippets, useAPI, apiChecked]);
 
   // Load Settings
   useEffect(() => {
@@ -194,29 +262,64 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showNotification('Logged out successfully', 'info');
   };
 
-  const addUser = (user: User) => {
-    setUsers(prev => [...prev, user]);
-    showNotification(`User ${user.username} created`, 'success');
+  const addUser = async (user: User) => {
+    try {
+      if (useAPI && apiChecked) {
+        await apiService.createUser(user);
+      }
+      setUsers(prev => [...prev, user]);
+      showNotification(`User ${user.username} created`, 'success');
+    } catch (error) {
+      console.error('Failed to create user:', error);
+      setUsers(prev => [...prev, user]); // Still add locally
+      showNotification(`User ${user.username} created (local)`, 'success');
+    }
   };
 
-  const deleteUser = (id: string) => {
-    setUsers(prev => prev.filter(u => u.id !== id));
-    showNotification('User deleted', 'info');
+  const deleteUser = async (id: string) => {
+    try {
+      if (useAPI && apiChecked) {
+        await apiService.deleteUser(id);
+      }
+      setUsers(prev => prev.filter(u => u.id !== id));
+      showNotification('User deleted', 'info');
+    } catch (error) {
+      console.error('Failed to delete user:', error);
+      setUsers(prev => prev.filter(u => u.id !== id));
+      showNotification('User deleted (local)', 'info');
+    }
   };
 
-  const addTask = (task: Task) => {
+  const addTask = async (task: Task) => {
     task.activityLog = [{
         id: `l${Date.now()}`,
         userId: currentUser?.id || 'system',
         action: 'Created task',
         timestamp: Date.now()
     }];
-    setTasks(prev => [task, ...prev]);
-    showNotification('New directive created', 'success');
+    try {
+      if (useAPI && apiChecked) {
+        await apiService.createTask(task);
+      }
+      setTasks(prev => [task, ...prev]);
+      showNotification('New directive created', 'success');
+    } catch (error) {
+      console.error('Failed to create task:', error);
+      setTasks(prev => [task, ...prev]);
+      showNotification('New directive created (local)', 'success');
+    }
   };
 
-  const updateTask = (updatedTask: Task) => {
+  const updateTask = async (updatedTask: Task) => {
     let xpGained = 0;
+
+    try {
+      if (useAPI && apiChecked) {
+        await apiService.updateTask(updatedTask.id, updatedTask);
+      }
+    } catch (error) {
+      console.error('Failed to update task:', error);
+    }
 
     setTasks(prev => prev.map(t => {
         if (t.id === updatedTask.id) {
@@ -267,17 +370,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const deleteTask = (id: string) => {
-    setTasks(prev => prev.filter(t => t.id !== id));
-    showNotification('Task purged', 'warning');
+  const deleteTask = async (id: string) => {
+    try {
+      if (useAPI && apiChecked) {
+        await apiService.deleteTask(id);
+      }
+      setTasks(prev => prev.filter(t => t.id !== id));
+      showNotification('Task purged', 'warning');
+    } catch (error) {
+      console.error('Failed to delete task:', error);
+      setTasks(prev => prev.filter(t => t.id !== id));
+      showNotification('Task purged (local)', 'warning');
+    }
   };
 
-  const addProject = (project: Project) => {
-      setProjects(prev => [...prev, project]);
-      showNotification(`Project ${project.name} initialized`, 'success');
+  const addProject = async (project: Project) => {
+      try {
+        if (useAPI && apiChecked) {
+          await apiService.createProject(project);
+        }
+        setProjects(prev => [...prev, project]);
+        showNotification(`Project ${project.name} initialized`, 'success');
+      } catch (error) {
+        console.error('Failed to create project:', error);
+        setProjects(prev => [...prev, project]);
+        showNotification(`Project ${project.name} initialized (local)`, 'success');
+      }
   };
 
-  const addComment = (taskId: string, text: string) => {
+  const addComment = async (taskId: string, text: string) => {
+      try {
+        if (useAPI && apiChecked && currentUser) {
+          await apiService.addComment(taskId, text, currentUser.id);
+        }
+      } catch (error) {
+        console.error('Failed to add comment:', error);
+      }
+      
       setTasks(prev => prev.map(t => {
           if (t.id === taskId) {
               const newComment = {
@@ -294,14 +423,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       showNotification('Comment added', 'success');
   };
 
-  const addSnippet = (snippet: Snippet) => {
-      setSnippets(prev => [snippet, ...prev]);
-      showNotification('Code snippet archived', 'success');
+  const addSnippet = async (snippet: Snippet) => {
+      try {
+        if (useAPI && apiChecked) {
+          await apiService.createSnippet(snippet);
+        }
+        setSnippets(prev => [snippet, ...prev]);
+        showNotification('Code snippet archived', 'success');
+      } catch (error) {
+        console.error('Failed to create snippet:', error);
+        setSnippets(prev => [snippet, ...prev]);
+        showNotification('Code snippet archived (local)', 'success');
+      }
   };
 
-  const deleteSnippet = (id: string) => {
-      setSnippets(prev => prev.filter(s => s.id !== id));
-      showNotification('Snippet deleted', 'warning');
+  const deleteSnippet = async (id: string) => {
+      try {
+        if (useAPI && apiChecked) {
+          await apiService.deleteSnippet(id);
+        }
+        setSnippets(prev => prev.filter(s => s.id !== id));
+        showNotification('Snippet deleted', 'warning');
+      } catch (error) {
+        console.error('Failed to delete snippet:', error);
+        setSnippets(prev => prev.filter(s => s.id !== id));
+        showNotification('Snippet deleted (local)', 'warning');
+      }
   };
 
   const toggleTaskTimer = (taskId: string) => {
