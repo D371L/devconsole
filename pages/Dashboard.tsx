@@ -60,7 +60,7 @@ export const Dashboard: React.FC = () => {
         <div>
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight dark:neon-text-main">TASKS</h2>
           <p className="text-gray-500 dark:text-gray-600 text-sm mt-1 font-mono">
-             > SYSTEM STATUS: <span className="text-green-500">OPTIMAL</span>
+             {'>'} SYSTEM STATUS: <span className="text-green-500">OPTIMAL</span>
           </p>
         </div>
         <div className="flex gap-2">
