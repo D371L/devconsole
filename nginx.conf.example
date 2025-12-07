@@ -1,0 +1,70 @@
+# Пример конфигурации Nginx для DevConsole
+# Скопируйте в /etc/nginx/sites-available/devconsole
+
+server {
+    listen 80;
+    server_name your_domain.com;  # Замените на ваш домен или IP
+
+    # Frontend - Static files
+    location / {
+        root /var/www/devconsole-dist;
+        index index.html;
+        try_files $uri $uri/ /index.html;
+        
+        # Кэширование статических файлов
+        location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+        }
+    }
+
+    # Backend API
+    location /api {
+        proxy_pass http://localhost:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        
+        # Таймауты для длительных запросов
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+
+    # Health check endpoint (optional, для мониторинга)
+    location /api/health {
+        proxy_pass http://localhost:8080/health;
+        proxy_set_header Host $host;
+        access_log off;
+    }
+
+    # Блокируем доступ к скрытым файлам
+    location ~ /\. {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+
+    # Gzip compression
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_types text/plain text/css text/xml text/javascript application/javascript application/xml+rss application/json;
+}
+
+# HTTPS конфигурация (будет создана автоматически certbot)
+# server {
+#     listen 443 ssl http2;
+#     server_name your_domain.com;
+#     
+#     ssl_certificate /etc/letsencrypt/live/your_domain.com/fullchain.pem;
+#     ssl_certificate_key /etc/letsencrypt/live/your_domain.com/privkey.pem;
+#     
+#     # ... остальная конфигурация такая же
+# }
+

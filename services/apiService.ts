@@ -1,7 +1,18 @@
 import { User, Task, Project, Snippet, Comment } from '../types';
 
 // API URL - будет автоматически подставлен DigitalOcean или локальный для разработки
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+// Если VITE_API_URL начинается с /, используем относительный путь (для VPS через Nginx)
+// Иначе используем полный URL
+const getApiUrl = () => {
+  const envUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+  if (envUrl.startsWith('/')) {
+    // Относительный путь - используется через Nginx
+    return envUrl;
+  }
+  return envUrl;
+};
+
+const API_URL = getApiUrl();
 
 class ApiService {
   private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
@@ -126,11 +137,22 @@ class ApiService {
 
   // ========== HEALTH CHECK ==========
   async healthCheck(): Promise<{ status: string; timestamp: string }> {
-    // Health check is at root /health, not /api/health
-    const apiBase = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:8080';
-    const response = await fetch(`${apiBase}/health`);
-    if (!response.ok) throw new Error('Health check failed');
-    return await response.json();
+    // Health check endpoint - пробуем через API, если не работает - напрямую
+    try {
+      // Пробуем через /api/health (если API_URL относительный)
+      if (API_URL.startsWith('/')) {
+        const response = await fetch('/api/health');
+        if (response.ok) return await response.json();
+      }
+      // Или напрямую к backend на порту 8080 (для локальной разработки)
+      const apiBase = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:8080';
+      const directUrl = apiBase.startsWith('http') ? `${apiBase}/health` : `http://localhost:8080/health`;
+      const response = await fetch(directUrl);
+      if (!response.ok) throw new Error('Health check failed');
+      return await response.json();
+    } catch (error) {
+      throw new Error('Health check failed');
+    }
   }
 }
 
