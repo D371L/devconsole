@@ -13,6 +13,7 @@ export interface User {
   avatar?: string;
   xp: number;
   achievements: string[]; // Array of Achievement IDs
+  allowedProjects?: string[]; // Array of project IDs that VIEWER can access (only for VIEWER role)
 }
 
 export interface Project {
@@ -65,6 +66,7 @@ export interface Task {
   createdBy: string; // User ID
   createdAt: number;
   deadline?: string;
+  completedAt?: number | null; // Timestamp when task was completed (status changed to DONE)
   status: TaskStatus;
   priority: Priority;
   attachments: string[]; // Base64 strings for simplicity

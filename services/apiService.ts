@@ -137,18 +137,12 @@ class ApiService {
 
   // ========== HEALTH CHECK ==========
   async healthCheck(): Promise<{ status: string; timestamp: string }> {
-    // Health check endpoint - пробуем через API, если не работает - напрямую
+    // Health check через Nginx proxy
     try {
-      // Пробуем через /api/health (если API_URL относительный)
-      if (API_URL.startsWith('/')) {
-        const response = await fetch('/api/health');
-        if (response.ok) return await response.json();
+      const response = await fetch('/api/health');
+      if (!response.ok) {
+        throw new Error(`Health check failed: ${response.status} ${response.statusText}`);
       }
-      // Или напрямую к backend на порту 8080 (для локальной разработки)
-      const apiBase = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:8080';
-      const directUrl = apiBase.startsWith('http') ? `${apiBase}/health` : `http://localhost:8080/health`;
-      const response = await fetch(directUrl);
-      if (!response.ok) throw new Error('Health check failed');
       return await response.json();
     } catch (error) {
       throw new Error('Health check failed');

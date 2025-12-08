@@ -6,7 +6,7 @@ import { Role, User } from '../types';
 import { SoundService } from '../services/soundService';
 
 export const AdminPanel: React.FC = () => {
-  const { users, addUser, deleteUser, currentUser, showNotification } = useApp();
+  const { users, addUser, deleteUser, currentUser, showNotification, projects } = useApp();
   
   // Form State
   const [newUser, setNewUser] = useState<Partial<User>>({
@@ -14,6 +14,9 @@ export const AdminPanel: React.FC = () => {
     password: 'password',
     role: Role.DEVELOPER
   });
+  
+  // Selected projects for VIEWER
+  const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
 
 
   // Avatar State
@@ -64,11 +67,13 @@ export const AdminPanel: React.FC = () => {
       role: newUser.role as Role,
       avatar: currentAvatarUrl,
       xp: 0, 
-      achievements: [] 
+      achievements: [],
+      allowedProjects: newUser.role === Role.VIEWER ? selectedProjects : undefined
     });
 
     // Reset form
     setNewUser({ username: '', password: 'password', role: Role.DEVELOPER });
+    setSelectedProjects([]);
     setAvatarSeed(Date.now().toString());
     setCustomAvatar(null);
     setAvatarMode('RANDOM');
@@ -132,7 +137,13 @@ export const AdminPanel: React.FC = () => {
                     <label className="block text-xs font-bold text-gray-700 dark:text-gray-500 uppercase tracking-wider mb-2">Clearance</label>
                     <select 
                         value={newUser.role}
-                        onChange={(e) => setNewUser({...newUser, role: e.target.value as Role})}
+                        onChange={(e) => {
+                          const role = e.target.value as Role;
+                          setNewUser({...newUser, role});
+                          if (role !== Role.VIEWER) {
+                            setSelectedProjects([]);
+                          }
+                        }}
                         className="w-full bg-white dark:bg-black border border-gray-300 dark:border-gray-800 text-gray-900 dark:text-gray-300 text-sm rounded-lg dark:rounded-none focus:ring-blue-500 dark:focus:border-neon-green block p-2.5 uppercase"
                     >
                         {Object.values(Role).map(r => (
@@ -150,6 +161,41 @@ export const AdminPanel: React.FC = () => {
                 </div>
             </div>
 
+            {/* Project Access - только для VIEWER */}
+            {newUser.role === Role.VIEWER && (
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-500 uppercase tracking-wider mb-2">Project Access</label>
+                <div className="max-h-48 overflow-y-auto border border-gray-300 dark:border-gray-800 rounded-lg dark:rounded-none p-3 space-y-2 bg-white dark:bg-black custom-scrollbar">
+                  {projects.length === 0 ? (
+                    <p className="text-xs text-gray-400 italic">No projects available. Create projects first.</p>
+                  ) : (
+                    projects.map(project => (
+                      <label key={project.id} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900 p-2 rounded dark:rounded-none">
+                        <input
+                          type="checkbox"
+                          checked={selectedProjects.includes(project.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedProjects([...selectedProjects, project.id]);
+                            } else {
+                              setSelectedProjects(selectedProjects.filter(id => id !== project.id));
+                            }
+                          }}
+                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-600"
+                        />
+                        <span className="text-sm text-gray-700 dark:text-gray-300 font-mono">{project.name}</span>
+                      </label>
+                    ))
+                  )}
+                </div>
+                {selectedProjects.length > 0 && (
+                  <p className="text-[10px] text-gray-400 mt-1">
+                    {selectedProjects.length} project{selectedProjects.length !== 1 ? 's' : ''} selected
+                  </p>
+                )}
+              </div>
+            )}
+
             <TerminalButton type="submit" className="w-full mt-2" variant="primary">REGISTER AGENT</TerminalButton>
           </form>
         </TerminalCard>
@@ -164,6 +210,14 @@ export const AdminPanel: React.FC = () => {
                   <div>
                     <div className="font-bold text-gray-900 dark:text-gray-300 dark:group-hover:text-neon-purple">{user.username}</div>
                     <div className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">{user.role}</div>
+                    {user.role === Role.VIEWER && user.allowedProjects && user.allowedProjects.length > 0 && (
+                      <div className="text-[9px] text-gray-400 mt-1">
+                        Access: {user.allowedProjects.map(pid => projects.find(p => p.id === pid)?.name || pid).join(', ')}
+                      </div>
+                    )}
+                    {user.role === Role.VIEWER && (!user.allowedProjects || user.allowedProjects.length === 0) && (
+                      <div className="text-[9px] text-orange-400 mt-1">No project access</div>
+                    )}
                   </div>
                 </div>
                 {user.id !== currentUser?.id && (

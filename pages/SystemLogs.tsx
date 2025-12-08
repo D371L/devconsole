@@ -9,13 +9,15 @@ export const SystemLogs: React.FC = () => {
 
     const allLogs = useMemo(() => {
         // Aggregate all logs from all tasks
-        const logs = tasks.flatMap(task => 
-            task.activityLog.map(log => ({
+        const logs = tasks.flatMap(task => {
+            // Обрабатываем случаи когда activityLog может быть null, undefined, или не массивом
+            const activityLog = Array.isArray(task.activityLog) ? task.activityLog : [];
+            return activityLog.map(log => ({
                 ...log,
                 taskTitle: task.title,
                 taskId: task.id
-            }))
-        );
+            }));
+        });
         // Sort by timestamp descending (newest first)
         return logs.sort((a, b) => b.timestamp - a.timestamp);
     }, [tasks]);

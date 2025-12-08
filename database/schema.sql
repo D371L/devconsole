@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS users (
     avatar TEXT,
     xp INTEGER DEFAULT 0,
     achievements TEXT[] DEFAULT '{}',
+    allowed_projects TEXT[] DEFAULT '{}',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -35,6 +36,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     created_by VARCHAR(255) REFERENCES users(id) ON DELETE SET NULL,
     created_at BIGINT NOT NULL,
     deadline DATE,
+    completed_at BIGINT,
     status VARCHAR(50) NOT NULL DEFAULT 'TODO',
     priority VARCHAR(50) NOT NULL DEFAULT 'MEDIUM',
     attachments TEXT[] DEFAULT '{}',

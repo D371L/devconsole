@@ -67,15 +67,7 @@ export const LoginPage: React.FC = () => {
             </TerminalButton>
             
             <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800 text-center">
-              <p className="text-xs text-gray-400 mb-2 dark:text-gray-600">AUTHORIZED PERSONNEL ONLY</p>
-              <div className="flex flex-col gap-1 text-[10px] text-gray-500 font-mono">
-                  <div>DEFAULT KEY: <span className="text-blue-500 dark:text-neon-cyan">password</span></div>
-              </div>
-              <div className="flex justify-center gap-3 text-xs text-gray-600 font-mono dark:text-gray-500 mt-2">
-                <span className="bg-gray-100 dark:bg-gray-900 px-2 py-1 rounded dark:rounded-none">admin</span>
-                <span className="bg-gray-100 dark:bg-gray-900 px-2 py-1 rounded dark:rounded-none">dev_jane</span>
-                <span className="bg-gray-100 dark:bg-gray-900 px-2 py-1 rounded dark:rounded-none">dev_john</span>
-              </div>
+              <p className="text-xs text-gray-400 dark:text-gray-600">AUTHORIZED PERSONNEL ONLY</p>
             </div>
           </form>
         </TerminalCard>

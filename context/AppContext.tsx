@@ -36,7 +36,7 @@ interface AppContextType {
   addComment: (taskId: string, text: string) => void;
   addSnippet: (snippet: Snippet) => void;
   deleteSnippet: (id: string) => void;
-  toggleTaskTimer: (taskId: string) => void;
+  toggleTaskTimer: (taskId: string) => Promise<void>;
   showNotification: (message: string, type: 'success' | 'error' | 'info' | 'warning') => void;
 }
 
@@ -51,9 +51,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Start with empty arrays if we're checking API, to avoid showing LocalStorage data
   // If API is not available, we'll load from LocalStorage in useEffect
   const [users, setUsers] = useState<User[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [allTasks, setAllTasks] = useState<Task[]>([]); // Все задачи (без фильтрации)
+  const [allProjects, setAllProjects] = useState<Project[]>([]); // Все проекты (без фильтрации)
   const [snippets, setSnippets] = useState<Snippet[]>([]);
+  
+  // Фильтрованные данные для VIEWER
+  const tasks = currentUser?.role === Role.VIEWER && currentUser.allowedProjects
+    ? allTasks.filter(task => currentUser.allowedProjects!.includes(task.projectId))
+    : allTasks;
+  
+  const projects = currentUser?.role === Role.VIEWER && currentUser.allowedProjects
+    ? allProjects.filter(project => currentUser.allowedProjects!.includes(project.id))
+    : allProjects;
 
   // Load data from API only - NO LocalStorage for data
   useEffect(() => {
@@ -69,27 +78,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             apiService.getProjects().catch(() => []),
             apiService.getSnippets().catch(() => [])
           ]);
-          // Always use API data, even if empty - fallback to INITIAL only if API returns empty
+          // Always use API data ONLY - no fallback to INITIAL
+          // If API returns empty, use empty arrays (fresh start)
           setUsers(apiUsers.length > 0 ? apiUsers : INITIAL_USERS);
-          setTasks(apiTasks);
-          setProjects(apiProjects);
-          setSnippets(apiSnippets);
+          setAllTasks(apiTasks.length > 0 ? apiTasks : []);
+          setAllProjects(apiProjects.length > 0 ? apiProjects : []);
+          setSnippets(apiSnippets.length > 0 ? apiSnippets : []);
         } catch (err) {
           console.error('Failed to load from API:', err);
-          // If API fails, use initial constants only (NO LocalStorage)
+          // If API fails, use INITIAL_USERS only (for admin), empty for rest
           setUsers(INITIAL_USERS);
-          setTasks(INITIAL_TASKS);
-          setProjects(INITIAL_PROJECTS);
-          setSnippets(INITIAL_SNIPPETS);
+          setAllTasks([]);
+          setAllProjects([]);
+          setSnippets([]);
         }
       } catch (error) {
         console.error('API not available:', error);
         setUseAPI(false);
-        // API not available - use initial constants only (NO LocalStorage)
+        // API not available - use INITIAL_USERS only (for admin), empty for rest
         setUsers(INITIAL_USERS);
-        setTasks(INITIAL_TASKS);
-        setProjects(INITIAL_PROJECTS);
-        setSnippets(INITIAL_SNIPPETS);
+        setAllTasks([]);
+        setAllProjects([]);
+        setSnippets([]);
       } finally {
         setApiChecked(true);
         setIsCheckingAPI(false);
@@ -106,22 +116,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [digitalRainMode, setDigitalRainMode] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  // Persistence Effects - API only, NO LocalStorage
-  useEffect(() => {
-    if (!apiChecked || !useAPI) return;
-    // Sync to API in background - NO LocalStorage
-    users.forEach(user => {
-      apiService.updateUser(user.id, user).catch(err => console.error('Failed to sync user:', err));
-    });
-  }, [users, useAPI, apiChecked]);
-
-  useEffect(() => {
-    if (!apiChecked || !useAPI) return;
-    // Sync to API in background - NO LocalStorage
-    tasks.forEach(task => {
-      apiService.updateTask(task.id, task).catch(err => console.error('Failed to sync task:', err));
-    });
-  }, [tasks, useAPI, apiChecked]);
+  // Note: Users and tasks are saved individually when created/updated via their respective functions
+  // No bulk sync needed here to avoid infinite loops and unnecessary API calls
 
   // Load Settings - NO LocalStorage, use defaults only
   // Settings are not persisted, always use defaults
@@ -155,14 +151,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const updatedUser = { ...currentUser };
     let newXp = updatedUser.xp;
 
+    // Получаем список уже показанных достижений из sessionStorage
+    const shownAchievements = JSON.parse(sessionStorage.getItem('devconsole_shown_achievements') || '[]');
+
     ACHIEVEMENTS.forEach(ach => {
         if (!updatedUser.achievements.includes(ach.id)) {
             if (ach.condition(updatedUser, tasks)) {
                 updatedUser.achievements.push(ach.id);
                 newXp += ach.xpBonus;
                 hasNewAchievements = true;
-                showNotification(`ACHIEVEMENT UNLOCKED: ${ach.title} (+${ach.xpBonus} XP)`, 'success');
-                SoundService.playSuccess();
+                
+                // Показываем уведомление только если это достижение еще не было показано в этой сессии
+                if (!shownAchievements.includes(ach.id)) {
+                    showNotification(`ACHIEVEMENT UNLOCKED: ${ach.title} (+${ach.xpBonus} XP)`, 'success');
+                    SoundService.playSuccess();
+                    shownAchievements.push(ach.id);
+                    sessionStorage.setItem('devconsole_shown_achievements', JSON.stringify(shownAchievements));
+                }
             }
         }
     });
@@ -211,8 +216,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const user = users.find(u => u.username === username);
     if (user && user.password === password) {
       setCurrentUser(user);
-      // NO LocalStorage - current user is not persisted
-      showNotification(`Welcome back, ${user.username}`, 'success');
+      // Показываем приветствие только один раз (используем sessionStorage)
+      const welcomeShown = sessionStorage.getItem('devconsole_welcome_shown');
+      if (!welcomeShown) {
+        showNotification(`Welcome back, ${user.username}`, 'success');
+        sessionStorage.setItem('devconsole_welcome_shown', 'true');
+      }
       return true;
     }
     SoundService.playError();
@@ -262,68 +271,83 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }];
     try {
       if (useAPI && apiChecked) {
-        await apiService.createTask(task);
+        console.log('Creating task via API:', task);
+        const createdTask = await apiService.createTask(task);
+        console.log('Task created successfully:', createdTask);
+        setAllTasks(prev => [createdTask, ...prev]);
+        showNotification('New directive created', 'success');
+      } else {
+        console.warn('API not available, task not saved to database');
+        setAllTasks(prev => [task, ...prev]);
+        showNotification('New directive created (local only)', 'warning');
       }
-      setTasks(prev => [task, ...prev]);
-      showNotification('New directive created', 'success');
     } catch (error) {
       console.error('Failed to create task:', error);
-      setTasks(prev => [task, ...prev]);
-      showNotification('New directive created (local)', 'success');
+      console.error('Task that failed:', task);
+      // Не добавляем задачу в состояние если она не сохранилась в базу
+      showNotification('Failed to create task: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error');
     }
   };
 
   const updateTask = async (updatedTask: Task) => {
     let xpGained = 0;
 
+    // Убеждаемся что activityLog это массив
+    const currentTask = tasks.find(t => t.id === updatedTask.id);
+    const existingLogs = Array.isArray(updatedTask.activityLog) ? [...updatedTask.activityLog] : (Array.isArray(currentTask?.activityLog) ? [...currentTask.activityLog] : []);
+    const logs = [...existingLogs];
+    
+    if (currentTask) {
+        if (currentTask.status !== updatedTask.status) {
+            logs.push({
+                id: `l${Date.now()}_s`,
+                userId: currentUser?.id || 'system',
+                action: `Changed status to ${updatedTask.status}`,
+                timestamp: Date.now()
+            });
+
+            if (updatedTask.status === TaskStatus.DONE && currentTask.status !== TaskStatus.DONE) {
+                // Устанавливаем дату завершения при изменении статуса на DONE
+                updatedTask.completedAt = Date.now();
+                xpGained = 150; 
+                if (currentTask.priority === Priority.HIGH) xpGained += 100;
+                if (currentTask.priority === Priority.CRITICAL) xpGained += 250;
+            } else if (updatedTask.status !== TaskStatus.DONE && currentTask.status === TaskStatus.DONE) {
+                // Очищаем дату завершения если статус изменился с DONE на другой
+                updatedTask.completedAt = null;
+            }
+        }
+        if (currentTask.priority !== updatedTask.priority) {
+            logs.push({
+                id: `l${Date.now()}_p`,
+                userId: currentUser?.id || 'system',
+                action: `Changed priority to ${updatedTask.priority}`,
+                timestamp: Date.now()
+            });
+        }
+        if (currentTask.assignedTo !== updatedTask.assignedTo) {
+            const newAssignee = users.find(u => u.id === updatedTask.assignedTo)?.username || 'Unassigned';
+            logs.push({
+                id: `l${Date.now()}_a`,
+                userId: currentUser?.id || 'system',
+                action: `Assigned to ${newAssignee}`,
+                timestamp: Date.now()
+            });
+        }
+    }
+
+    // Объединяем обновленную задачу с логами
+    const taskWithLogs = { ...updatedTask, activityLog: logs };
+
     try {
       if (useAPI && apiChecked) {
-        await apiService.updateTask(updatedTask.id, updatedTask);
+        await apiService.updateTask(updatedTask.id, taskWithLogs);
       }
     } catch (error) {
       console.error('Failed to update task:', error);
     }
 
-    setTasks(prev => prev.map(t => {
-        if (t.id === updatedTask.id) {
-            const logs = [...(updatedTask.activityLog || [])];
-            
-            if (t.status !== updatedTask.status) {
-                logs.push({
-                    id: `l${Date.now()}_s`,
-                    userId: currentUser?.id || 'system',
-                    action: `Changed status to ${updatedTask.status}`,
-                    timestamp: Date.now()
-                });
-
-                if (updatedTask.status === TaskStatus.DONE && t.status !== TaskStatus.DONE) {
-                    xpGained = 150; 
-                    if (t.priority === Priority.HIGH) xpGained += 100;
-                    if (t.priority === Priority.CRITICAL) xpGained += 250;
-                }
-            }
-            if (t.priority !== updatedTask.priority) {
-                logs.push({
-                    id: `l${Date.now()}_p`,
-                    userId: currentUser?.id || 'system',
-                    action: `Changed priority to ${updatedTask.priority}`,
-                    timestamp: Date.now()
-                });
-            }
-             if (t.assignedTo !== updatedTask.assignedTo) {
-                 const newAssignee = users.find(u => u.id === updatedTask.assignedTo)?.username || 'Unassigned';
-                logs.push({
-                    id: `l${Date.now()}_a`,
-                    userId: currentUser?.id || 'system',
-                    action: `Assigned to ${newAssignee}`,
-                    timestamp: Date.now()
-                });
-            }
-
-            return { ...updatedTask, activityLog: logs };
-        }
-        return t;
-    }));
+    setAllTasks(prev => prev.map(t => t.id === updatedTask.id ? taskWithLogs : t));
 
     if (xpGained > 0 && currentUser) {
         const updatedUser = { ...currentUser, xp: currentUser.xp + xpGained };
@@ -338,11 +362,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (useAPI && apiChecked) {
         await apiService.deleteTask(id);
       }
-      setTasks(prev => prev.filter(t => t.id !== id));
+      setAllTasks(prev => prev.filter(t => t.id !== id));
       showNotification('Task purged', 'warning');
     } catch (error) {
       console.error('Failed to delete task:', error);
-      setTasks(prev => prev.filter(t => t.id !== id));
+      setAllTasks(prev => prev.filter(t => t.id !== id));
       showNotification('Task purged (local)', 'warning');
     }
   };
@@ -352,11 +376,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (useAPI && apiChecked) {
           await apiService.createProject(project);
         }
-        setProjects(prev => [...prev, project]);
+        setAllProjects(prev => [...prev, project]);
         showNotification(`Project ${project.name} initialized`, 'success');
       } catch (error) {
         console.error('Failed to create project:', error);
-        setProjects(prev => [...prev, project]);
+        setAllProjects(prev => [...prev, project]);
         showNotification(`Project ${project.name} initialized (local)`, 'success');
       }
   };
@@ -370,7 +394,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         console.error('Failed to add comment:', error);
       }
       
-      setTasks(prev => prev.map(t => {
+      setAllTasks(prev => prev.map(t => {
           if (t.id === taskId) {
               const newComment = {
                   id: `c${Date.now()}`,
@@ -414,27 +438,82 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
   };
 
-  const toggleTaskTimer = (taskId: string) => {
-      setTasks(prev => prev.map(t => {
-          if (t.id === taskId) {
-              if (t.timerStartedAt) {
-                  const elapsed = (Date.now() - t.timerStartedAt) / 1000;
-                  SoundService.playStopTimer();
-                  return {
-                      ...t,
-                      timerStartedAt: null,
-                      timeSpent: (t.timeSpent || 0) + elapsed
-                  };
-              } else {
-                  SoundService.playStartTimer();
-                  return {
-                      ...t,
-                      timerStartedAt: Date.now()
-                  };
-              }
+  const toggleTaskTimer = async (taskId: string) => {
+      const task = tasks.find(t => t.id === taskId);
+      if (!task) {
+          console.error('Task not found:', taskId);
+          return;
+      }
+
+      // Правильная проверка timerStartedAt (может быть number, null, или строка)
+      const timerStartedAt = typeof task.timerStartedAt === 'string' 
+        ? (task.timerStartedAt === 'null' || task.timerStartedAt === '' ? null : parseInt(task.timerStartedAt, 10))
+        : task.timerStartedAt;
+      
+      const isTimerActive = timerStartedAt != null && !isNaN(timerStartedAt) && timerStartedAt > 0;
+      
+      // Подготовка activityLog
+      const activityLog = Array.isArray(task.activityLog) ? [...task.activityLog] : [];
+      
+      let updatedTask: Task;
+      
+      if (isTimerActive) {
+          // Останавливаем таймер - добавляем прошедшее время к timeSpent
+          const elapsed = (Date.now() - timerStartedAt!) / 1000;
+          const elapsedMinutes = Math.floor(elapsed / 60);
+          const elapsedSeconds = Math.floor(elapsed % 60);
+          SoundService.playStopTimer();
+          
+          // Добавляем лог об остановке таймера
+          activityLog.push({
+              id: `l${Date.now()}_timer_stop`,
+              userId: currentUser?.id || 'system',
+              action: `Stopped timer (tracked ${elapsedMinutes}m ${elapsedSeconds}s)`,
+              timestamp: Date.now()
+          });
+          
+          updatedTask = {
+              ...task,
+              timerStartedAt: null,
+              timeSpent: Math.round((task.timeSpent || 0) + elapsed),
+              activityLog: activityLog
+          };
+          console.log('Stopping timer. Elapsed:', elapsed, 'Total time:', updatedTask.timeSpent);
+      } else {
+          // Запускаем таймер
+          SoundService.playStartTimer();
+          
+          // Добавляем лог о запуске таймера
+          activityLog.push({
+              id: `l${Date.now()}_timer_start`,
+              userId: currentUser?.id || 'system',
+              action: 'Started time tracking',
+              timestamp: Date.now()
+          });
+          
+          updatedTask = {
+              ...task,
+              timerStartedAt: Date.now(),
+              activityLog: activityLog
+          };
+          console.log('Starting timer at:', updatedTask.timerStartedAt);
+      }
+      
+      // Сначала обновляем локальное состояние для мгновенной реакции UI
+          setAllTasks(prev => prev.map(t => t.id === taskId ? updatedTask : t));
+      
+      // Затем сохраняем в базу данных
+      try {
+          if (useAPI && apiChecked) {
+              await apiService.updateTask(taskId, updatedTask);
+              console.log('Timer state saved to database');
           }
-          return t;
-      }));
+      } catch (error) {
+          console.error('Failed to save timer:', error);
+          showNotification('Failed to save timer', 'error');
+          // Откатываем изменение при ошибке
+          setAllTasks(prev => prev.map(t => t.id === taskId ? task : t));
+      }
   };
 
   return (

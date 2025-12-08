@@ -20,6 +20,11 @@ export const Dashboard: React.FC = () => {
   const filteredTasks = useMemo(() => {
     let result = tasks;
     
+    // Для VIEWER без доступа к проектам - пустой список
+    if (isViewer && (!currentUser?.allowedProjects || currentUser.allowedProjects.length === 0)) {
+        return [];
+    }
+    
     if (filterStatus !== 'ALL') {
         result = result.filter(t => t.status === filterStatus);
     }
@@ -29,7 +34,7 @@ export const Dashboard: React.FC = () => {
     }
 
     return result;
-  }, [tasks, filterStatus, filterProject]);
+  }, [tasks, filterStatus, filterProject, isViewer, currentUser]);
 
   // Reset to page 1 when filter changes
   useEffect(() => {
@@ -88,9 +93,13 @@ export const Dashboard: React.FC = () => {
                         className="appearance-none bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 py-1.5 pl-3 pr-8 rounded-md dark:rounded-none text-xs font-bold focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:border-neon-main uppercase tracking-wider"
                     >
                         <option value="ALL">ALL PROJECTS</option>
-                        {projects.map(p => (
-                            <option key={p.id} value={p.id}>{p.name}</option>
-                        ))}
+                        {projects.length === 0 && isViewer ? (
+                            <option disabled>No access granted</option>
+                        ) : (
+                            projects.map(p => (
+                                <option key={p.id} value={p.id}>{p.name}</option>
+                            ))
+                        )}
                     </select>
                     <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
                         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
@@ -166,23 +175,24 @@ export const Dashboard: React.FC = () => {
         {/* Content View */}
         {viewMode === 'TABLE' && (
             <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800 table-fixed">
                     <thead className="bg-gray-50 dark:bg-black">
                         <tr>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-600 uppercase tracking-wider font-mono w-24">ID</th>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-600 uppercase tracking-wider font-mono">Directive</th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-600 uppercase tracking-wider font-mono max-w-xs">Directive</th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-600 uppercase tracking-wider font-mono w-32">Project</th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-600 uppercase tracking-wider font-mono w-32">Status</th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-600 uppercase tracking-wider font-mono w-32">Priority</th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-600 uppercase tracking-wider font-mono w-32">Agent</th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-600 uppercase tracking-wider font-mono w-32">Deadline</th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-600 uppercase tracking-wider font-mono w-32">Completed</th>
                             <th scope="col" className="relative px-6 py-3 w-20"><span className="sr-only">View</span></th>
                         </tr>
                     </thead>
                     <tbody className="bg-white dark:bg-black divide-y divide-gray-200 dark:divide-gray-800">
                         {paginatedTasks.length === 0 ? (
                             <tr>
-                                <td colSpan={8} className="px-6 py-12 text-center text-gray-500 text-sm font-mono uppercase tracking-widest">
+                                <td colSpan={9} className="px-6 py-12 text-center text-gray-500 text-sm font-mono uppercase tracking-widest">
                                     Void // No directives found
                                 </td>
                             </tr>
@@ -192,9 +202,9 @@ export const Dashboard: React.FC = () => {
                                     <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-500 dark:text-gray-600 font-mono">
                                         #{task.id}
                                     </td>
-                                    <td className="px-6 py-4">
-                                        <div className="text-sm font-medium text-gray-900 dark:text-gray-200 dark:group-hover:text-neon-main transition-colors">{task.title}</div>
-                                        <div className="text-xs text-gray-500 dark:text-gray-600 truncate max-w-2xl">{task.description}</div>
+                                    <td className="px-6 py-4 max-w-xs">
+                                        <div className="text-sm font-medium text-gray-900 dark:text-gray-200 dark:group-hover:text-neon-main transition-colors truncate" title={task.title}>{task.title}</div>
+                                        <div className="text-xs text-gray-500 dark:text-gray-600 truncate" title={task.description || ''}>{task.description || ''}</div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="text-xs font-bold text-gray-600 dark:text-gray-400 font-mono">
@@ -214,6 +224,14 @@ export const Dashboard: React.FC = () => {
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-600 font-mono">
                                         {task.deadline ? new Date(task.deadline).toLocaleDateString() : '-'}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-600 font-mono">
+                                        {task.completedAt ? (() => {
+                                            const timestamp = typeof task.completedAt === 'string' ? parseInt(task.completedAt, 10) : task.completedAt;
+                                            if (isNaN(timestamp) || timestamp <= 0) return '-';
+                                            const date = new Date(timestamp);
+                                            return isNaN(date.getTime()) ? '-' : date.toLocaleDateString();
+                                        })() : '-'}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <Link to={`/task/${task.id}`} className="text-blue-600 hover:text-blue-900 font-semibold text-xs border border-blue-100 hover:border-blue-300 px-3 py-1 rounded bg-blue-50 hover:bg-blue-100 transition-all dark:bg-transparent dark:border-gray-700 dark:text-gray-400 dark:hover:border-neon-main dark:hover:text-neon-main dark:rounded-none">

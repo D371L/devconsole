@@ -40,7 +40,6 @@ export const TaskDetail: React.FC<{ isNew?: boolean }> = ({ isNew }) => {
   const [newComment, setNewComment] = useState('');
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [isFocusMode, setIsFocusMode] = useState(false);
 
   // Project Creation State
   const [isCreatingProject, setIsCreatingProject] = useState(false);
@@ -62,6 +61,40 @@ export const TaskDetail: React.FC<{ isNew?: boolean }> = ({ isNew }) => {
     if (!isNew && id) {
       const existingTask = tasks.find(t => t.id === id);
       if (existingTask) {
+        // Проверка доступа VIEWER к проекту задачи
+        if (isViewer && currentUser?.allowedProjects && !currentUser.allowedProjects.includes(existingTask.projectId)) {
+          showNotification('Access denied: You do not have access to this project', 'error');
+          navigate('/dashboard');
+          return;
+        }
+        // Проверяем это первая загрузка задачи или обновление
+        const isFirstLoad = !formData.id || formData.id !== id;
+        
+        if (isFirstLoad) {
+          // Первая загрузка - проверяем таймер и останавливаем если был запущен
+          const timerStartedAt = typeof existingTask.timerStartedAt === 'string' 
+            ? (existingTask.timerStartedAt === 'null' || existingTask.timerStartedAt === '' ? null : parseInt(existingTask.timerStartedAt, 10))
+            : existingTask.timerStartedAt;
+          
+          if (timerStartedAt != null && !isNaN(timerStartedAt) && timerStartedAt > 0) {
+            const timerAge = Date.now() - timerStartedAt;
+            const elapsed = Math.max(0, timerAge / 1000);
+            
+            // Останавливаем таймер при первой загрузке задачи
+            const updatedTask = {
+              ...existingTask,
+              timerStartedAt: null,
+              timeSpent: Math.round((existingTask.timeSpent || 0) + elapsed)
+            };
+            
+            setFormData(updatedTask);
+            updateTask(updatedTask).catch(err => console.error('Failed to auto-stop timer on load:', err));
+            return;
+          }
+        }
+        
+        // Не первая загрузка - просто синхронизируем formData с tasks
+        // Это позволяет таймеру работать после toggleTaskTimer
         setFormData(existingTask);
       } else {
         navigate('/dashboard');
@@ -71,37 +104,116 @@ export const TaskDetail: React.FC<{ isNew?: boolean }> = ({ isNew }) => {
         setFormData(prev => ({
             ...prev, 
             assignedTo: currentUser?.id,
-            projectId: projects[0]?.id || ''
+            projectId: projects[0]?.id || '',
+            timerStartedAt: null
         }));
     }
   }, [id, isNew, tasks, navigate, currentUser, projects]);
 
-  // Update live timer
+  // Update live timer and auto-save every 30 seconds
   useEffect(() => {
-      let interval: ReturnType<typeof setInterval>;
-      if (formData.timerStartedAt) {
+      let interval: ReturnType<typeof setInterval> | undefined;
+      let autoSaveInterval: ReturnType<typeof setInterval> | undefined;
+      
+      // Проверяем что timerStartedAt валидное число (не null, не undefined, не строка "null")
+      const timerStartedAt = typeof formData.timerStartedAt === 'string' 
+        ? (formData.timerStartedAt === 'null' || formData.timerStartedAt === '' ? null : parseInt(formData.timerStartedAt, 10))
+        : formData.timerStartedAt;
+      
+      const isTimerActive = timerStartedAt != null && !isNaN(timerStartedAt) && timerStartedAt > 0 && id;
+      
+      console.log('Timer effect:', { 
+        timerStartedAt, 
+        isTimerActive, 
+        id, 
+        timeSpent: formData.timeSpent 
+      });
+      
+      if (isTimerActive) {
           // Update immediately to avoid lag
-          setLiveTimeSpent((formData.timeSpent || 0) + (Date.now() - formData.timerStartedAt) / 1000);
+          const initialTime = (formData.timeSpent || 0) + (Date.now() - timerStartedAt) / 1000;
+          setLiveTimeSpent(initialTime);
           
+          // Update display every second
           interval = setInterval(() => {
-             setLiveTimeSpent((formData.timeSpent || 0) + (Date.now() - formData.timerStartedAt!) / 1000);
+             const currentTime = (formData.timeSpent || 0) + (Date.now() - timerStartedAt) / 1000;
+             setLiveTimeSpent(currentTime);
           }, 1000);
+          
+          // Auto-save accumulated time every 30 seconds
+          autoSaveInterval = setInterval(async () => {
+              if (id && !isViewer) {
+                  const task = tasks.find(t => t.id === id);
+                  if (task) {
+                      const taskTimerStartedAt = typeof task.timerStartedAt === 'string' 
+                        ? (task.timerStartedAt === 'null' || task.timerStartedAt === '' ? null : parseInt(task.timerStartedAt, 10))
+                        : task.timerStartedAt;
+                      
+                      // Проверяем что таймер все еще активен перед автосохранением
+                      if (taskTimerStartedAt != null && !isNaN(taskTimerStartedAt) && taskTimerStartedAt > 0) {
+                          const elapsed = (Date.now() - taskTimerStartedAt) / 1000;
+                          const updatedTask = {
+                              ...task,
+                              timeSpent: (task.timeSpent || 0) + elapsed,
+                              timerStartedAt: Date.now() // Обновляем время старта для следующего интервала
+                          };
+                          try {
+                              await updateTask(updatedTask);
+                              // Обновляем formData чтобы синхронизировать
+                              setFormData(prev => ({ ...prev, ...updatedTask }));
+                          } catch (error) {
+                              console.error('Failed to auto-save timer:', error);
+                          }
+                      }
+                  }
+              }
+          }, 30000); // 30 секунд
       } else {
+          // Таймер остановлен - просто показываем сохраненное время, не обновляем
           setLiveTimeSpent(formData.timeSpent || 0);
       }
-      return () => clearInterval(interval);
-  }, [formData.timerStartedAt, formData.timeSpent]);
-
-  // Handle ESC for focus mode
+      
+      return () => {
+          if (interval) clearInterval(interval);
+          if (autoSaveInterval) clearInterval(autoSaveInterval);
+      };
+  }, [formData.timerStartedAt, formData.timeSpent, id, isViewer, tasks, updateTask, formData.id]);
+  
+  // Сохраняем время при уходе со страницы
   useEffect(() => {
-      const handleEsc = (e: KeyboardEvent) => {
-          if (e.key === 'Escape' && isFocusMode) {
-              setIsFocusMode(false);
+      const handleBeforeUnload = async () => {
+          const timerStartedAt = typeof formData.timerStartedAt === 'string' 
+            ? (formData.timerStartedAt === 'null' || formData.timerStartedAt === '' ? null : parseInt(formData.timerStartedAt, 10))
+            : formData.timerStartedAt;
+          
+          if (id && timerStartedAt != null && !isNaN(timerStartedAt) && timerStartedAt > 0 && !isViewer) {
+              const task = tasks.find(t => t.id === id);
+              if (task) {
+                  const taskTimerStartedAt = typeof task.timerStartedAt === 'string' 
+                    ? (task.timerStartedAt === 'null' || task.timerStartedAt === '' ? null : parseInt(task.timerStartedAt, 10))
+                    : task.timerStartedAt;
+              
+                  if (taskTimerStartedAt != null && !isNaN(taskTimerStartedAt) && taskTimerStartedAt > 0) {
+                      const elapsed = (Date.now() - taskTimerStartedAt) / 1000;
+                      const updatedTask = {
+                          ...task,
+                          timeSpent: (task.timeSpent || 0) + elapsed,
+                          timerStartedAt: null // Останавливаем таймер при закрытии
+                      };
+                      try {
+                          await updateTask(updatedTask);
+                      } catch (error) {
+                          console.error('Failed to save timer on unload:', error);
+                      }
+                  }
+              }
           }
       };
-      window.addEventListener('keydown', handleEsc);
-      return () => window.removeEventListener('keydown', handleEsc);
-  }, [isFocusMode]);
+      
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [id, formData.timerStartedAt, isViewer, tasks, updateTask]);
+
 
   // Setup Canvas when pending image changes
   useEffect(() => {
@@ -370,68 +482,35 @@ export const TaskDetail: React.FC<{ isNew?: boolean }> = ({ isNew }) => {
       }
   };
 
-  const handleTimerToggle = () => {
-      if (id && !isViewer) {
-          toggleTaskTimer(id);
+  const handleTimerToggle = async () => {
+      if (!id || isViewer) {
+          console.log('Cannot toggle timer: id=', id, 'isViewer=', isViewer);
+          return;
+      }
+      
+      console.log('Toggle timer clicked for task:', id);
+      console.log('Current formData.timerStartedAt:', formData.timerStartedAt);
+      
+      try {
+          await toggleTaskTimer(id);
+          
+          // Принудительно обновляем formData после изменения таймера
+          // Ждем немного чтобы tasks успел обновиться
+          setTimeout(() => {
+              const updatedTask = tasks.find(t => t.id === id);
+              if (updatedTask) {
+                  console.log('Updating formData after timer toggle:', updatedTask.timerStartedAt);
+                  setFormData(updatedTask);
+              }
+          }, 100);
+      } catch (error) {
+          console.error('Failed to toggle timer:', error);
+          showNotification('Failed to toggle timer', 'error');
       }
   };
 
   const getUserName = (id: string) => users.find(u => u.id === id)?.username || 'Unknown';
 
-  // --- Focus Mode Render ---
-  if (isFocusMode) {
-      return (
-          <div className="fixed inset-0 z-[100] bg-black text-gray-300 flex flex-col items-center justify-center p-8 font-mono animate-fade-in">
-              <div className="absolute top-4 right-4 text-xs text-gray-500">PRESS ESC TO EXIT</div>
-              
-              <div className="max-w-3xl w-full text-center space-y-8">
-                  <div className="inline-block px-3 py-1 border border-neon-cyan text-neon-cyan rounded-full text-xs font-bold uppercase tracking-widest shadow-[0_0_10px_#00f3ff]">
-                      FOCUS MODE_ENGAGED
-                  </div>
-                  
-                  <h1 className="text-4xl md:text-6xl font-bold text-white tracking-tight">{formData.title}</h1>
-                  
-                  <div className="text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed whitespace-pre-wrap">
-                      {formData.description}
-                  </div>
-
-                  {/* Big Timer */}
-                  <div className="py-10">
-                      <div className={`text-6xl md:text-8xl font-bold font-mono tabular-nums tracking-widest ${formData.timerStartedAt ? 'text-neon-green animate-pulse' : 'text-gray-600'}`}>
-                          {formatTime(liveTimeSpent)}
-                      </div>
-                      {!isViewer && (
-                          <button 
-                            onClick={handleTimerToggle}
-                            className={`mt-6 px-8 py-3 text-lg font-bold uppercase tracking-widest border-2 transition-all duration-300 ${
-                                formData.timerStartedAt 
-                                ? 'border-red-500 text-red-500 hover:bg-red-900/20' 
-                                : 'border-green-500 text-green-500 hover:bg-green-900/20'
-                            }`}
-                          >
-                              {formData.timerStartedAt ? 'STOP SESSION' : 'START SESSION'}
-                          </button>
-                      )}
-                  </div>
-
-                  {/* Subtasks Focus */}
-                  {formData.subtasks && formData.subtasks.length > 0 && (
-                      <div className="text-left bg-gray-900/50 p-6 rounded-lg border border-gray-800 max-w-xl mx-auto">
-                          <h3 className="text-sm font-bold text-gray-500 mb-4 uppercase tracking-widest border-b border-gray-800 pb-2">Primary Objectives</h3>
-                          <div className="space-y-3">
-                              {formData.subtasks.map(st => (
-                                  <div key={st.id} className="flex items-center gap-3">
-                                      <div className={`w-4 h-4 border ${st.completed ? 'bg-green-500 border-green-500' : 'border-gray-500'} ${isViewer ? '' : 'cursor-pointer'}`} onClick={() => toggleSubtask(st.id)}></div>
-                                      <span className={`${st.completed ? 'line-through text-gray-600' : 'text-gray-300'}`}>{st.title}</span>
-                                  </div>
-                              ))}
-                          </div>
-                      </div>
-                  )}
-              </div>
-          </div>
-      );
-  }
 
   return (
     <div className="pb-12 animate-fade-in relative">
@@ -488,18 +567,8 @@ export const TaskDetail: React.FC<{ isNew?: boolean }> = ({ isNew }) => {
             </h2>
         </div>
         <div className="flex flex-wrap gap-3">
-             {!isNew && (
-                <>
-                    <button 
-                        onClick={() => setIsFocusMode(true)}
-                        className="flex items-center gap-2 px-4 py-2 border border-purple-500 text-purple-600 dark:text-neon-main hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded dark:rounded-none font-bold text-sm uppercase tracking-wider transition-all"
-                    >
-                        <span>◉</span> Focus
-                    </button>
-                    {!isViewer && (
-                        <TerminalButton variant="danger" onClick={handleDelete}>PURGE</TerminalButton>
-                    )}
-                </>
+             {!isNew && !isViewer && (
+                <TerminalButton variant="danger" onClick={handleDelete}>PURGE</TerminalButton>
              )}
              {!isViewer && (
                  <TerminalButton variant="primary" onClick={handleSave}>EXECUTE SAVE</TerminalButton>
@@ -690,85 +759,40 @@ export const TaskDetail: React.FC<{ isNew?: boolean }> = ({ isNew }) => {
                  <p className="text-xs text-gray-400 italic text-center">No attachments available.</p>
             )}
           </TerminalCard>
-
-           {!isNew && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Comments Section */}
-                  <TerminalCard title="COMMUNICATIONS_LOG" neonColor="purple">
-                      <div className="max-h-64 overflow-y-auto mb-4 space-y-4 pr-2 custom-scrollbar">
-                          {formData.comments && formData.comments.length > 0 ? (
-                              formData.comments.map((comment) => (
-                                  <div key={comment.id} className="bg-gray-50 dark:bg-gray-900/30 p-3 rounded dark:rounded-none border-l-2 border-blue-400 dark:border-neon-cyan">
-                                      <div className="flex justify-between items-center mb-1">
-                                          <span className="text-xs font-bold text-gray-700 dark:text-gray-300">{getUserName(comment.userId)}</span>
-                                          <span className="text-[10px] text-gray-400 font-mono">{new Date(comment.timestamp).toLocaleTimeString()}</span>
-                                      </div>
-                                      <p className="text-sm text-gray-600 dark:text-gray-400">{comment.text}</p>
-                                  </div>
-                              ))
-                          ) : (
-                              <p className="text-xs text-gray-400 italic">No communications recorded.</p>
-                          )}
-                      </div>
-                      {!isViewer && (
-                        <form onSubmit={handlePostComment} className="flex gap-2">
-                            <TerminalInput 
-                                value={newComment} 
-                                onChange={e => setNewComment(e.target.value)} 
-                                placeholder="Enter logs..." 
-                                className="text-xs"
-                            />
-                            <button type="submit" className="px-3 py-1 bg-blue-600 text-white text-xs font-bold uppercase hover:bg-blue-700 dark:bg-transparent dark:border dark:border-blue-500 dark:text-blue-500 dark:hover:bg-blue-900/20">
-                                SEND
-                            </button>
-                        </form>
-                      )}
-                  </TerminalCard>
-
-                  {/* Activity Log */}
-                   <TerminalCard title="SYSTEM_ACTIVITY" neonColor="green">
-                       <div className="max-h-80 overflow-y-auto space-y-2 pr-2 custom-scrollbar font-mono text-xs">
-                           {formData.activityLog && formData.activityLog.length > 0 ? (
-                               formData.activityLog.slice().reverse().map((log) => (
-                                   <div key={log.id} className="flex gap-2 text-gray-600 dark:text-gray-500 border-b border-gray-100 dark:border-gray-800 pb-1">
-                                       <span className="text-gray-400">[{new Date(log.timestamp).toLocaleTimeString()}]</span>
-                                       <span className="text-blue-600 dark:text-neon-main">{getUserName(log.userId)}:</span>
-                                       <span>{log.action}</span>
-                                   </div>
-                               ))
-                           ) : (
-                               <div className="text-gray-400 italic">System initialization...</div>
-                           )}
-                       </div>
-                   </TerminalCard>
-              </div>
-           )}
         </div>
 
         {/* Sidebar Column */}
         <div className="space-y-6">
           {!isNew && (
-            <TerminalCard title="SESSION_TIMER" neonColor="green">
-                 <div className="text-center">
-                     <div className="text-4xl font-mono font-bold text-gray-800 dark:text-white mb-4 tabular-nums">
-                         {formatTime(liveTimeSpent)}
-                     </div>
-                     {!isViewer && (
-                        <button 
-                            onClick={handleTimerToggle}
-                            className={`w-full py-2 font-bold uppercase tracking-wider text-sm transition-colors border ${
-                                formData.timerStartedAt 
-                                ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100 dark:bg-transparent dark:text-red-500 dark:border-red-900 dark:hover:bg-red-900/20' 
-                                : 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100 dark:bg-transparent dark:text-neon-green dark:border-neon-green dark:hover:bg-green-900/20'
-                            }`}
-                        >
-                            {formData.timerStartedAt ? 'STOP TRACKING' : 'START TRACKING'}
+            <TerminalCard title="COMMUNICATIONS_LOG" neonColor="purple">
+                <div className="max-h-64 overflow-y-auto mb-4 space-y-4 pr-2 custom-scrollbar">
+                    {formData.comments && formData.comments.length > 0 ? (
+                        formData.comments.map((comment) => (
+                            <div key={comment.id} className="bg-gray-50 dark:bg-gray-900/30 p-3 rounded dark:rounded-none border-l-2 border-blue-400 dark:border-neon-cyan">
+                                <div className="flex justify-between items-center mb-1">
+                                    <span className="text-xs font-bold text-gray-700 dark:text-gray-300">{getUserName(comment.userId)}</span>
+                                    <span className="text-[10px] text-gray-400 font-mono">{new Date(comment.timestamp).toLocaleTimeString()}</span>
+                                </div>
+                                <p className="text-sm text-gray-600 dark:text-gray-400">{comment.text}</p>
+                            </div>
+                        ))
+                    ) : (
+                        <p className="text-xs text-gray-400 italic">No communications recorded.</p>
+                    )}
+                </div>
+                {!isViewer && (
+                    <form onSubmit={handlePostComment} className="flex gap-2">
+                        <TerminalInput 
+                            value={newComment} 
+                            onChange={e => setNewComment(e.target.value)} 
+                            placeholder="Enter logs..." 
+                            className="text-xs"
+                        />
+                        <button type="submit" className="px-3 py-1 bg-blue-600 text-white text-xs font-bold uppercase hover:bg-blue-700 dark:bg-transparent dark:border dark:border-blue-500 dark:text-blue-500 dark:hover:bg-blue-900/20">
+                            SEND
                         </button>
-                     )}
-                     {isViewer && formData.timerStartedAt && (
-                         <div className="text-xs text-neon-green animate-pulse">Tracking Active by Assignee</div>
-                     )}
-                 </div>
+                    </form>
+                )}
             </TerminalCard>
           )}
 
@@ -838,13 +862,40 @@ export const TaskDetail: React.FC<{ isNew?: boolean }> = ({ isNew }) => {
              <div className="p-4 bg-gray-100 dark:bg-gray-900 rounded-lg dark:rounded-none text-xs text-gray-500 dark:text-gray-600 space-y-2 font-mono border border-transparent dark:border-gray-800">
                  <div className="flex justify-between">
                      <span>CREATED:</span>
-                     <span>{new Date(formData.createdAt || 0).toLocaleDateString()}</span>
+                     <span>{(() => {
+                         if (!formData.createdAt) return 'N/A';
+                         // Преобразуем в число если это строка (PostgreSQL BIGINT может быть строкой)
+                         const timestamp = typeof formData.createdAt === 'string' 
+                             ? parseInt(formData.createdAt, 10) 
+                             : Number(formData.createdAt);
+                         if (isNaN(timestamp) || timestamp <= 0) return 'N/A';
+                         const date = new Date(timestamp);
+                         return isNaN(date.getTime()) ? 'N/A' : date.toLocaleDateString();
+                     })()}</span>
                  </div>
                  <div className="flex justify-between">
                      <span>HASH:</span>
                      <span className="truncate w-24">{id}</span>
                  </div>
              </div>
+          )}
+
+          {!isNew && (
+            <TerminalCard title="SYSTEM_ACTIVITY" neonColor="green">
+                <div className="max-h-80 overflow-y-auto space-y-2 pr-2 custom-scrollbar font-mono text-xs">
+                    {Array.isArray(formData.activityLog) && formData.activityLog.length > 0 ? (
+                        formData.activityLog.slice().reverse().map((log) => (
+                            <div key={log.id} className="flex gap-2 text-gray-600 dark:text-gray-500 border-b border-gray-100 dark:border-gray-800 pb-1">
+                                <span className="text-gray-400">[{new Date(log.timestamp).toLocaleTimeString()}]</span>
+                                <span className="text-blue-600 dark:text-neon-main">{getUserName(log.userId)}:</span>
+                                <span>{log.action}</span>
+                            </div>
+                        ))
+                    ) : (
+                        <div className="text-gray-400 italic">System initialization...</div>
+                    )}
+                </div>
+            </TerminalCard>
           )}
         </div>
       </div>
