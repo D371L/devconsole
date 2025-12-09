@@ -44,7 +44,10 @@ CREATE TABLE IF NOT EXISTS tasks (
     comments JSONB DEFAULT '[]',
     activity_log JSONB DEFAULT '[]',
     time_spent INTEGER DEFAULT 0,
-    timer_started_at BIGINT
+    timer_started_at BIGINT,
+    depends_on TEXT[] DEFAULT '{}',
+    tags TEXT[] DEFAULT '{}',
+    order_index INTEGER DEFAULT 0
 );
 
 -- Snippets table

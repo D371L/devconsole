@@ -6,7 +6,7 @@ import { Role, User } from '../types';
 import { SoundService } from '../services/soundService';
 
 export const AdminPanel: React.FC = () => {
-  const { users, addUser, deleteUser, currentUser, showNotification, projects } = useApp();
+  const { users, addUser, deleteUser, currentUser, showNotification, projects, updateUser } = useApp();
   
   // Form State
   const [newUser, setNewUser] = useState<Partial<User>>({
@@ -17,6 +17,10 @@ export const AdminPanel: React.FC = () => {
   
   // Selected projects for VIEWER
   const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
+  
+  // Edit State
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editSelectedProjects, setEditSelectedProjects] = useState<string[]>([]);
 
 
   // Avatar State
@@ -221,18 +225,129 @@ export const AdminPanel: React.FC = () => {
                   </div>
                 </div>
                 {user.id !== currentUser?.id && (
-                  <button 
-                    onClick={() => deleteUser(user.id)}
-                    className="text-red-500 hover:text-red-700 dark:text-gray-600 dark:hover:text-red-500 text-xs font-bold uppercase tracking-wider border border-red-200 hover:border-red-400 dark:border-transparent dark:hover:border-red-900 px-3 py-1.5 rounded dark:rounded-none transition-colors bg-white dark:bg-transparent"
-                  >
-                    PURGE
-                  </button>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => {
+                        setEditingUser(user);
+                        setEditSelectedProjects(user.allowedProjects || []);
+                      }}
+                      className="text-blue-500 hover:text-blue-700 dark:text-gray-600 dark:hover:text-blue-400 text-xs font-bold uppercase tracking-wider border border-blue-200 hover:border-blue-400 dark:border-transparent dark:hover:border-blue-900 px-3 py-1.5 rounded dark:rounded-none transition-colors bg-white dark:bg-transparent"
+                    >
+                      EDIT
+                    </button>
+                    <button 
+                      onClick={() => deleteUser(user.id)}
+                      className="text-red-500 hover:text-red-700 dark:text-gray-600 dark:hover:text-red-500 text-xs font-bold uppercase tracking-wider border border-red-200 hover:border-red-400 dark:border-transparent dark:hover:border-red-900 px-3 py-1.5 rounded dark:rounded-none transition-colors bg-white dark:bg-transparent"
+                    >
+                      PURGE
+                    </button>
+                  </div>
                 )}
               </div>
             ))}
           </div>
         </TerminalCard>
       </div>
+      
+      {/* Edit User Modal */}
+      {editingUser && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <TerminalCard title="EDIT_AGENT" neonColor="blue" className="max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              if (!editingUser.username) {
+                showNotification("Username required", "error");
+                return;
+              }
+              
+              // Check if we're trying to change the last admin's role
+              if (editingUser.role === Role.ADMIN && editingUser.id !== currentUser?.id) {
+                const adminCount = users.filter(u => u.role === Role.ADMIN).length;
+                if (adminCount <= 1) {
+                  showNotification("Cannot change role of the last admin", "error");
+                  return;
+                }
+              }
+              
+              const updatedUser = {
+                ...editingUser,
+                allowedProjects: editingUser.role === Role.VIEWER ? editSelectedProjects : []
+              };
+              
+              if (updateUser) {
+                updateUser(updatedUser);
+                setEditingUser(null);
+                setEditSelectedProjects([]);
+                showNotification("User updated", "success");
+              }
+            }} className="space-y-6">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-500 uppercase tracking-wider mb-2">Username</label>
+                <TerminalInput
+                  value={editingUser.username}
+                  onChange={(e) => setEditingUser({...editingUser, username: e.target.value})}
+                  disabled={editingUser.id === currentUser?.id}
+                />
+              </div>
+              
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-500 uppercase tracking-wider mb-2">Clearance</label>
+                <select 
+                  value={editingUser.role}
+                  onChange={(e) => setEditingUser({...editingUser, role: e.target.value as Role})}
+                  disabled={editingUser.id === currentUser?.id}
+                  className="w-full bg-white dark:bg-black border border-gray-300 dark:border-gray-800 text-gray-900 dark:text-neon-main text-sm rounded-lg dark:rounded-none focus:ring-blue-500 dark:focus:border-neon-main block p-2.5"
+                >
+                  {Object.values(Role).map(role => (
+                    <option key={role} value={role}>{role}</option>
+                  ))}
+                </select>
+              </div>
+              
+              {editingUser.role === Role.VIEWER && (
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-500 uppercase tracking-wider mb-2">Project Access</label>
+                  <div className="max-h-48 overflow-y-auto border border-gray-300 dark:border-gray-800 rounded-lg dark:rounded-none p-3 space-y-2 bg-white dark:bg-black custom-scrollbar">
+                    {projects.length === 0 ? (
+                      <p className="text-xs text-gray-400 italic">No projects available</p>
+                    ) : (
+                      projects.map(project => (
+                        <label key={project.id} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900 p-2 rounded dark:rounded-none">
+                          <input
+                            type="checkbox"
+                            checked={editSelectedProjects.includes(project.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setEditSelectedProjects([...editSelectedProjects, project.id]);
+                              } else {
+                                setEditSelectedProjects(editSelectedProjects.filter(id => id !== project.id));
+                              }
+                            }}
+                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-600"
+                          />
+                          <span className="text-sm text-gray-700 dark:text-gray-300 font-mono">{project.name}</span>
+                        </label>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              <div className="flex gap-3">
+                <TerminalButton type="button" variant="ghost" onClick={() => {
+                  setEditingUser(null);
+                  setEditSelectedProjects([]);
+                }} className="flex-1">
+                  CANCEL
+                </TerminalButton>
+                <TerminalButton type="submit" variant="primary" className="flex-1">
+                  SAVE
+                </TerminalButton>
+              </div>
+            </form>
+          </TerminalCard>
+        </div>
+      )}
     </div>
   );
 };

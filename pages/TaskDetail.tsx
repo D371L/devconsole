@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { TerminalButton, TerminalCard, TerminalInput, TerminalTextArea } from '../components/TerminalUI';
 import { Task, TaskStatus, Priority, Subtask, Role, Project } from '../types';
@@ -34,12 +34,16 @@ export const TaskDetail: React.FC<{ isNew?: boolean }> = ({ isNew }) => {
     comments: [],
     activityLog: [],
     timeSpent: 0,
-    timerStartedAt: null
+    timerStartedAt: null,
+    dependsOn: [],
+    tags: []
   });
 
   const [newComment, setNewComment] = useState('');
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [newTag, setNewTag] = useState('');
+  const [selectedDependency, setSelectedDependency] = useState<string>('');
 
   // Project Creation State
   const [isCreatingProject, setIsCreatingProject] = useState(false);

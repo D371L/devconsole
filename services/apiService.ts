@@ -15,18 +15,66 @@ const getApiUrl = () => {
 const API_URL = getApiUrl();
 
 class ApiService {
+  private getAuthToken(): string | null {
+    return localStorage.getItem('devconsole_jwt_token');
+  }
+
+  private setAuthToken(token: string): void {
+    localStorage.setItem('devconsole_jwt_token', token);
+  }
+
+  clearAuthToken(): void {
+    localStorage.removeItem('devconsole_jwt_token');
+  }
+
+  async login(username: string, password: string): Promise<{ token: string; user: any }> {
+    const url = getApiUrl().replace('/api', '/api/auth/login');
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ username, password }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(error.error || `Login failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+    this.setAuthToken(data.token);
+    return data;
+  }
+
+  async verifyToken(): Promise<any> {
+    return this.request<any>('/auth/verify');
+  }
+
   private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     try {
+      const token = this.getAuthToken();
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+        ...options?.headers,
+      };
+
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch(`${API_URL}${endpoint}`, {
         ...options,
-        headers: {
-          'Content-Type': 'application/json',
-          ...options?.headers,
-        },
+        headers,
       });
 
       if (!response.ok) {
-        throw new Error(`API Error: ${response.status} ${response.statusText}`);
+        if (response.status === 401 || response.status === 403) {
+          this.clearAuthToken();
+          throw new Error('Authentication required');
+        }
+        const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(error.error || `API Error: ${response.status}`);
       }
 
       if (response.status === 204) {
@@ -56,8 +104,8 @@ class ApiService {
     });
   }
 
-  async updateUser(id: string, user: Partial<User>): Promise<User> {
-    return this.request<User>(`/users/${id}`, {
+  async updateUser(user: User): Promise<User> {
+    return this.request<User>(`/users/${user.id}`, {
       method: 'PUT',
       body: JSON.stringify(user),
     });

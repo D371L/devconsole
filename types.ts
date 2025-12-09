@@ -76,6 +76,10 @@ export interface Task {
   // Time Tracking
   timeSpent: number; // Total seconds accumulated
   timerStartedAt?: number | null; // Timestamp when current session started, or null if paused
+  // New fields
+  dependsOn?: string[]; // Array of task IDs that this task depends on
+  tags?: string[]; // Array of tag strings
+  order?: number; // Order for drag & drop sorting
 }
 
 export interface Snippet {

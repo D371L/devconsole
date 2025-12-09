@@ -86,6 +86,101 @@ export const ACHIEVEMENTS: Achievement[] = [
             const totalSeconds = tasks.filter(t => t.assignedTo === u.id).reduce((acc, t) => acc + (t.timeSpent || 0), 0);
             return totalSeconds >= 36000;
         }
+    },
+    {
+        id: 'a5',
+        title: 'Early Bird',
+        description: 'Complete a task between 6-9 AM',
+        icon: '🌅',
+        xpBonus: 150,
+        condition: (u, tasks) => {
+            return tasks.some(t => {
+                if (t.assignedTo !== u.id || t.status !== TaskStatus.DONE || !t.completedAt) return false;
+                const completedDate = new Date(t.completedAt);
+                const hour = completedDate.getHours();
+                return hour >= 6 && hour < 9;
+            });
+        }
+    },
+    {
+        id: 'a6',
+        title: 'Night Owl',
+        description: 'Complete a task between 10 PM - 2 AM',
+        icon: '🦉',
+        xpBonus: 150,
+        condition: (u, tasks) => {
+            return tasks.some(t => {
+                if (t.assignedTo !== u.id || t.status !== TaskStatus.DONE || !t.completedAt) return false;
+                const completedDate = new Date(t.completedAt);
+                const hour = completedDate.getHours();
+                return (hour >= 22 || hour < 2);
+            });
+        }
+    },
+    {
+        id: 'a7',
+        title: 'Weekend Warrior',
+        description: 'Complete 3 tasks on weekends',
+        icon: '🏋️',
+        xpBonus: 250,
+        condition: (u, tasks) => {
+            const weekendTasks = tasks.filter(t => {
+                if (t.assignedTo !== u.id || t.status !== TaskStatus.DONE || !t.completedAt) return false;
+                const completedDate = new Date(t.completedAt);
+                const dayOfWeek = completedDate.getDay();
+                return dayOfWeek === 0 || dayOfWeek === 6; // Sunday or Saturday
+            });
+            return weekendTasks.length >= 3;
+        }
+    },
+    {
+        id: 'a8',
+        title: 'Streak Master',
+        description: 'Complete tasks for 5 consecutive days',
+        icon: '🔥',
+        xpBonus: 400,
+        condition: (u, tasks) => {
+            const completedTasks = tasks
+                .filter(t => t.assignedTo === u.id && t.status === TaskStatus.DONE && t.completedAt)
+                .map(t => {
+                    const date = new Date(t.completedAt!);
+                    return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+                })
+                .filter((date, index, self) => self.indexOf(date) === index) // Unique dates
+                .sort((a, b) => a - b);
+
+            if (completedTasks.length < 5) return false;
+
+            // Check for consecutive days
+            for (let i = 0; i <= completedTasks.length - 5; i++) {
+                let consecutive = true;
+                for (let j = 1; j < 5; j++) {
+                    const daysDiff = (completedTasks[i + j] - completedTasks[i + j - 1]) / (1000 * 60 * 60 * 24);
+                    if (daysDiff !== 1) {
+                        consecutive = false;
+                        break;
+                    }
+                }
+                if (consecutive) return true;
+            }
+            return false;
+        }
+    },
+    {
+        id: 'a9',
+        title: 'Speed Demon',
+        description: 'Complete a task in under 1 hour',
+        icon: '⚡',
+        xpBonus: 200,
+        condition: (u, tasks) => {
+            return tasks.some(t => {
+                if (t.assignedTo !== u.id || t.status !== TaskStatus.DONE || !t.completedAt || !t.createdAt) return false;
+                const createdTime = typeof t.createdAt === 'string' ? parseInt(t.createdAt, 10) : t.createdAt;
+                const completedTime = typeof t.completedAt === 'string' ? parseInt(t.completedAt, 10) : t.completedAt;
+                const timeDiff = (completedTime - createdTime) / (1000 * 60 * 60); // hours
+                return timeDiff < 1 && timeDiff > 0;
+            });
+        }
     }
 ];
 

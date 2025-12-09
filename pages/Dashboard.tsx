@@ -1,21 +1,57 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { StatusBadge, PriorityBadge } from '../components/TerminalUI';
-import { KanbanBoard, TaskStatsChart } from '../components/DashboardWidgets';
+import { KanbanBoard, TaskStatsChart, MetricsWidgets, CalendarWidget } from '../components/DashboardWidgets';
 import { GraphView } from '../components/GraphView';
-import { TaskStatus, Role } from '../types';
+import { TaskStatus, Role, Priority, Task } from '../types';
+
+type SortField = 'id' | 'title' | 'deadline' | 'completedAt' | 'priority' | 'createdAt' | 'status';
+type SortOrder = 'asc' | 'desc';
 
 export const Dashboard: React.FC = () => {
   const { tasks, users, projects, updateTask, currentUser } = useApp();
-  const [filterStatus, setFilterStatus] = useState<TaskStatus | 'ALL'>('ALL');
-  const [filterProject, setFilterProject] = useState<string>('ALL');
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  const [filterStatus, setFilterStatus] = useState<TaskStatus | 'ALL'>((searchParams.get('status') as TaskStatus | 'ALL') || 'ALL');
+  const [filterProject, setFilterProject] = useState<string>(searchParams.get('project') || 'ALL');
+  const [filterPriority, setFilterPriority] = useState<Priority | 'ALL'>((searchParams.get('priority') as Priority | 'ALL') || 'ALL');
+  const [filterAssignee, setFilterAssignee] = useState<string>(searchParams.get('assignee') || 'ALL');
+  const [filterDeadline, setFilterDeadline] = useState<string>(searchParams.get('deadline') || 'ALL');
+  const [searchQuery, setSearchQuery] = useState<string>(searchParams.get('search') || '');
+  const [sortField, setSortField] = useState<SortField>((searchParams.get('sort') as SortField) || 'createdAt');
+  const [sortOrder, setSortOrder] = useState<SortOrder>((searchParams.get('order') as SortOrder) || 'desc');
   const [viewMode, setViewMode] = useState<'TABLE' | 'BOARD' | 'GRAPH'>('TABLE');
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 15;
+  const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   const isViewer = currentUser?.role === Role.VIEWER;
+
+  // Функция для получения значения поля для сортировки
+  const getSortValue = (task: Task, field: SortField): string | number => {
+    switch (field) {
+      case 'id':
+        return task.id;
+      case 'title':
+        return task.title.toLowerCase();
+      case 'deadline':
+        return task.deadline ? new Date(task.deadline).getTime() : 0;
+      case 'completedAt':
+        return task.completedAt || 0;
+      case 'priority':
+        const priorityOrder = { [Priority.LOW]: 1, [Priority.MEDIUM]: 2, [Priority.HIGH]: 3, [Priority.CRITICAL]: 4 };
+        return priorityOrder[task.priority] || 0;
+      case 'createdAt':
+        return task.createdAt;
+      case 'status':
+        return task.status;
+      default:
+        return 0;
+    }
+  };
 
   const filteredTasks = useMemo(() => {
     let result = tasks;
@@ -23,6 +59,15 @@ export const Dashboard: React.FC = () => {
     // Для VIEWER без доступа к проектам - пустой список
     if (isViewer && (!currentUser?.allowedProjects || currentUser.allowedProjects.length === 0)) {
         return [];
+    }
+    
+    // Поиск по названию и описанию
+    if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        result = result.filter(t => 
+            t.title.toLowerCase().includes(query) || 
+            (t.description || '').toLowerCase().includes(query)
+        );
     }
     
     if (filterStatus !== 'ALL') {
@@ -33,13 +78,93 @@ export const Dashboard: React.FC = () => {
         result = result.filter(t => t.projectId === filterProject);
     }
 
+    if (filterPriority !== 'ALL') {
+        result = result.filter(t => t.priority === filterPriority);
+    }
+
+    if (filterAssignee !== 'ALL') {
+        result = result.filter(t => t.assignedTo === filterAssignee);
+    }
+
+    // Фильтр по дедлайну
+    if (filterDeadline !== 'ALL') {
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const weekFromNow = new Date(today);
+        weekFromNow.setDate(weekFromNow.getDate() + 7);
+
+        result = result.filter(t => {
+            if (!t.deadline) {
+                return filterDeadline === 'NO_DEADLINE';
+            }
+            const deadline = new Date(t.deadline);
+            
+            switch (filterDeadline) {
+                case 'TODAY':
+                    return deadline.toDateString() === today.toDateString();
+                case 'THIS_WEEK':
+                    return deadline >= today && deadline <= weekFromNow;
+                case 'OVERDUE':
+                    return deadline < today && t.status !== TaskStatus.DONE;
+                case 'NO_DEADLINE':
+                    return false;
+                default:
+                    return true;
+            }
+        });
+    }
+
+    // Сортировка
+    result = [...result].sort((a, b) => {
+        const aValue = getSortValue(a, sortField);
+        const bValue = getSortValue(b, sortField);
+        
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+            return sortOrder === 'asc' 
+                ? aValue.localeCompare(bValue)
+                : bValue.localeCompare(aValue);
+        } else {
+            return sortOrder === 'asc'
+                ? (aValue as number) - (bValue as number)
+                : (bValue as number) - (aValue as number);
+        }
+    });
+
     return result;
-  }, [tasks, filterStatus, filterProject, isViewer, currentUser]);
+  }, [tasks, filterStatus, filterProject, filterPriority, filterAssignee, filterDeadline, searchQuery, sortField, sortOrder, isViewer, currentUser]);
+
+  // Обновление URL параметров при изменении фильтров
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (searchQuery) params.set('search', searchQuery);
+    if (filterStatus !== 'ALL') params.set('status', filterStatus);
+    if (filterProject !== 'ALL') params.set('project', filterProject);
+    if (filterPriority !== 'ALL') params.set('priority', filterPriority);
+    if (filterAssignee !== 'ALL') params.set('assignee', filterAssignee);
+    if (filterDeadline !== 'ALL') params.set('deadline', filterDeadline);
+    if (sortField !== 'createdAt') params.set('sort', sortField);
+    if (sortOrder !== 'desc') params.set('order', sortOrder);
+    setSearchParams(params, { replace: true });
+  }, [searchQuery, filterStatus, filterProject, filterPriority, filterAssignee, filterDeadline, sortField, sortOrder, setSearchParams]);
 
   // Reset to page 1 when filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [filterStatus, filterProject]);
+  }, [filterStatus, filterProject, filterPriority, filterAssignee, filterDeadline, searchQuery, sortField, sortOrder]);
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('desc');
+    }
+  };
+
+  const getSortIcon = (field: SortField) => {
+    if (sortField !== field) return null;
+    return sortOrder === 'asc' ? '↑' : '↓';
+  };
 
   const totalPages = Math.ceil(filteredTasks.length / ITEMS_PER_PAGE);
   const paginatedTasks = useMemo(() => {
@@ -77,98 +202,206 @@ export const Dashboard: React.FC = () => {
         </div>
       </header>
 
+      {/* Metrics Widgets */}
+      <MetricsWidgets tasks={tasks} currentUser={currentUser} />
+      
       {/* Charts Section */}
-      <TaskStatsChart tasks={tasks} />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <div className="lg:col-span-2">
+          <TaskStatsChart tasks={tasks} />
+        </div>
+        <div>
+          <CalendarWidget tasks={tasks} />
+        </div>
+      </div>
 
       <div className="bg-white dark:bg-black border border-gray-200 dark:border-gray-800 rounded-lg dark:rounded-none shadow-sm overflow-hidden mb-6">
         {/* Toolbar */}
-        <div className="border-b border-gray-200 dark:border-gray-800 p-4 flex flex-col xl:flex-row justify-between gap-4 bg-gray-50/50 dark:bg-gray-900/20">
-            
-            <div className="flex flex-col md:flex-row gap-4">
-                {/* Project Filter */}
-                <div className="relative">
-                    <select
-                        value={filterProject}
-                        onChange={(e) => setFilterProject(e.target.value)}
-                        className="appearance-none bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 py-1.5 pl-3 pr-8 rounded-md dark:rounded-none text-xs font-bold focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:border-neon-main uppercase tracking-wider"
-                    >
-                        <option value="ALL">ALL PROJECTS</option>
-                        {projects.length === 0 && isViewer ? (
-                            <option disabled>No access granted</option>
-                        ) : (
-                            projects.map(p => (
-                                <option key={p.id} value={p.id}>{p.name}</option>
-                            ))
-                        )}
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
-                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                    </div>
-                </div>
-
-                {/* Status Filters */}
-                <div className="flex flex-wrap gap-2">
-                    <button
-                        onClick={() => setFilterStatus('ALL')}
-                        className={`px-3 py-1.5 rounded-md dark:rounded-none text-xs font-medium transition-colors ${
-                            filterStatus === 'ALL' 
-                            ? 'bg-white text-gray-900 shadow-sm border border-gray-200 dark:bg-gray-800 dark:text-white dark:border-gray-700' 
-                            : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-500 dark:hover:text-white dark:hover:bg-transparent'
-                        }`}
-                    >
-                        ALL
-                    </button>
-                    {Object.values(TaskStatus).map(status => (
-                    <button
-                        key={status}
-                        onClick={() => setFilterStatus(status)}
-                        className={`px-3 py-1.5 rounded-md dark:rounded-none text-xs font-medium transition-colors ${
-                        filterStatus === status 
-                            ? 'bg-white text-gray-900 shadow-sm border border-gray-200 dark:bg-gray-800 dark:text-white dark:border-gray-700' 
-                            : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-500 dark:hover:text-white dark:hover:bg-transparent'
-                        }`}
-                    >
-                        {status.replace('_', ' ')}
-                    </button>
-                    ))}
+        <div className="border-b border-gray-200 dark:border-gray-800 p-4 space-y-4 bg-gray-50/50 dark:bg-gray-900/20">
+            {/* Search Bar */}
+            <div className="flex items-center gap-2">
+                <div className="relative flex-1 max-w-md">
+                    <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search tasks..."
+                        className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 py-2 pl-10 pr-4 rounded-md dark:rounded-none text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:border-neon-main"
+                    />
+                    <svg className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
                 </div>
             </div>
 
-            {/* View Toggle */}
-            <div className="flex rounded-md dark:rounded-none shadow-sm" role="group">
+            <div className="flex flex-col lg:flex-row justify-between gap-4">
+                <div className="flex flex-col md:flex-row gap-4 flex-wrap">
+                    {/* Project Filter */}
+                    <div className="relative">
+                        <select
+                            value={filterProject}
+                            onChange={(e) => setFilterProject(e.target.value)}
+                            className="appearance-none bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 py-1.5 pl-3 pr-8 rounded-md dark:rounded-none text-xs font-bold focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:border-neon-main uppercase tracking-wider"
+                        >
+                            <option value="ALL">ALL PROJECTS</option>
+                            {projects.length === 0 && isViewer ? (
+                                <option disabled>No access granted</option>
+                            ) : (
+                                projects.map(p => (
+                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                ))
+                            )}
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </div>
+                    </div>
+
+                    {/* Priority Filter */}
+                    <div className="relative">
+                        <select
+                            value={filterPriority}
+                            onChange={(e) => setFilterPriority(e.target.value as Priority | 'ALL')}
+                            className="appearance-none bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 py-1.5 pl-3 pr-8 rounded-md dark:rounded-none text-xs font-bold focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:border-neon-main uppercase tracking-wider"
+                        >
+                            <option value="ALL">ALL PRIORITIES</option>
+                            {Object.values(Priority).map(priority => (
+                                <option key={priority} value={priority}>{priority}</option>
+                            ))}
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </div>
+                    </div>
+
+                    {/* Assignee Filter */}
+                    <div className="relative">
+                        <select
+                            value={filterAssignee}
+                            onChange={(e) => setFilterAssignee(e.target.value)}
+                            className="appearance-none bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 py-1.5 pl-3 pr-8 rounded-md dark:rounded-none text-xs font-bold focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:border-neon-main uppercase tracking-wider"
+                        >
+                            <option value="ALL">ALL AGENTS</option>
+                            {users.map(user => (
+                                <option key={user.id} value={user.id}>{user.username}</option>
+                            ))}
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </div>
+                    </div>
+
+                    {/* Deadline Filter */}
+                    <div className="relative">
+                        <select
+                            value={filterDeadline}
+                            onChange={(e) => setFilterDeadline(e.target.value)}
+                            className="appearance-none bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 py-1.5 pl-3 pr-8 rounded-md dark:rounded-none text-xs font-bold focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:border-neon-main uppercase tracking-wider"
+                        >
+                            <option value="ALL">ALL DEADLINES</option>
+                            <option value="TODAY">TODAY</option>
+                            <option value="THIS_WEEK">THIS WEEK</option>
+                            <option value="OVERDUE">OVERDUE</option>
+                            <option value="NO_DEADLINE">NO DEADLINE</option>
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </div>
+                    </div>
+
+                    {/* Status Filters */}
+                    <div className="flex flex-wrap gap-2">
+                        <button
+                            onClick={() => setFilterStatus('ALL')}
+                            className={`px-3 py-1.5 rounded-md dark:rounded-none text-xs font-medium transition-colors ${
+                                filterStatus === 'ALL' 
+                                ? 'bg-white text-gray-900 shadow-sm border border-gray-200 dark:bg-gray-800 dark:text-white dark:border-gray-700' 
+                                : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-500 dark:hover:text-white dark:hover:bg-transparent'
+                            }`}
+                        >
+                            ALL
+                        </button>
+                        {Object.values(TaskStatus).map(status => (
+                        <button
+                            key={status}
+                            onClick={() => setFilterStatus(status)}
+                            className={`px-3 py-1.5 rounded-md dark:rounded-none text-xs font-medium transition-colors ${
+                            filterStatus === status 
+                                ? 'bg-white text-gray-900 shadow-sm border border-gray-200 dark:bg-gray-800 dark:text-white dark:border-gray-700' 
+                                : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-500 dark:hover:text-white dark:hover:bg-transparent'
+                            }`}
+                        >
+                            {status.replace('_', ' ')}
+                        </button>
+                        ))}
+                    </div>
+                </div>
+
+            {/* View Toggle and Export */}
+            <div className="flex items-center gap-2">
                 <button
-                    type="button"
-                    onClick={() => setViewMode('TABLE')}
-                    className={`px-4 py-1.5 text-xs font-medium border border-gray-200 dark:border-gray-700 rounded-l-lg dark:rounded-none ${
-                        viewMode === 'TABLE' 
-                        ? 'z-10 bg-blue-50 text-blue-700 dark:bg-gray-800 dark:text-neon-main dark:border-neon-main' 
-                        : 'bg-white text-gray-900 hover:bg-gray-100 dark:bg-black dark:text-gray-400 dark:hover:bg-gray-900'
-                    }`}
+                    onClick={() => {
+                        const csv = filteredTasks.map(t => ({
+                            ID: t.id,
+                            Title: t.title,
+                            Description: t.description,
+                            Project: getProjectName(t.projectId),
+                            Status: t.status,
+                            Priority: t.priority,
+                            Agent: getUserName(t.assignedTo || ''),
+                            Deadline: t.deadline ? new Date(t.deadline).toLocaleDateString() : '',
+                            Completed: t.completedAt ? new Date(t.completedAt).toLocaleDateString() : '',
+                            TimeSpent: Math.floor((t.timeSpent || 0) / 3600) + 'h ' + Math.floor(((t.timeSpent || 0) % 3600) / 60) + 'm'
+                        }));
+                        const headers = Object.keys(csv[0] || {});
+                        const rows = csv.map(row => headers.map(h => `"${String(row[h as keyof typeof row] || '').replace(/"/g, '""')}"`).join(','));
+                        const csvContent = [headers.join(','), ...rows].join('\n');
+                        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                        const link = document.createElement('a');
+                        link.href = URL.createObjectURL(blob);
+                        link.download = `tasks_${new Date().toISOString().split('T')[0]}.csv`;
+                        link.click();
+                    }}
+                    disabled={filteredTasks.length === 0}
+                    className="px-3 py-1.5 text-xs font-medium border border-gray-200 dark:border-gray-700 rounded-md dark:rounded-none bg-white dark:bg-black text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    TABLE
+                    EXPORT CSV
                 </button>
-                <button
-                    type="button"
-                    onClick={() => setViewMode('BOARD')}
-                    className={`px-4 py-1.5 text-xs font-medium border-t border-b border-gray-200 dark:border-gray-700 dark:rounded-none ${
-                        viewMode === 'BOARD' 
-                        ? 'z-10 bg-blue-50 text-blue-700 dark:bg-gray-800 dark:text-neon-main dark:border-neon-main' 
-                        : 'bg-white text-gray-900 hover:bg-gray-100 dark:bg-black dark:text-gray-400 dark:hover:bg-gray-900'
-                    }`}
-                >
-                    BOARD
-                </button>
-                <button
-                    type="button"
-                    onClick={() => setViewMode('GRAPH')}
-                    className={`px-4 py-1.5 text-xs font-medium border border-gray-200 dark:border-gray-700 rounded-r-lg dark:rounded-none ${
-                        viewMode === 'GRAPH' 
-                        ? 'z-10 bg-blue-50 text-blue-700 dark:bg-gray-800 dark:text-neon-main dark:border-neon-main' 
-                        : 'bg-white text-gray-900 hover:bg-gray-100 dark:bg-black dark:text-gray-400 dark:hover:bg-gray-900'
-                    }`}
-                >
-                    GRAPH
-                </button>
+                <div className="flex rounded-md dark:rounded-none shadow-sm" role="group">
+                    <button
+                        type="button"
+                        onClick={() => setViewMode('TABLE')}
+                        className={`px-4 py-1.5 text-xs font-medium border border-gray-200 dark:border-gray-700 rounded-l-lg dark:rounded-none ${
+                            viewMode === 'TABLE' 
+                            ? 'z-10 bg-blue-50 text-blue-700 dark:bg-gray-800 dark:text-neon-main dark:border-neon-main' 
+                            : 'bg-white text-gray-900 hover:bg-gray-100 dark:bg-black dark:text-gray-400 dark:hover:bg-gray-900'
+                        }`}
+                    >
+                        TABLE
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setViewMode('BOARD')}
+                        className={`px-4 py-1.5 text-xs font-medium border-t border-b border-gray-200 dark:border-gray-700 dark:rounded-none ${
+                            viewMode === 'BOARD' 
+                            ? 'z-10 bg-blue-50 text-blue-700 dark:bg-gray-800 dark:text-neon-main dark:border-neon-main' 
+                            : 'bg-white text-gray-900 hover:bg-gray-100 dark:bg-black dark:text-gray-400 dark:hover:bg-gray-900'
+                        }`}
+                    >
+                        BOARD
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setViewMode('GRAPH')}
+                        className={`px-4 py-1.5 text-xs font-medium border border-gray-200 dark:border-gray-700 rounded-r-lg dark:rounded-none ${
+                            viewMode === 'GRAPH' 
+                            ? 'z-10 bg-blue-50 text-blue-700 dark:bg-gray-800 dark:text-neon-main dark:border-neon-main' 
+                            : 'bg-white text-gray-900 hover:bg-gray-100 dark:bg-black dark:text-gray-400 dark:hover:bg-gray-900'
+                        }`}
+                    >
+                        GRAPH
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -178,14 +411,38 @@ export const Dashboard: React.FC = () => {
                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800 table-fixed">
                     <thead className="bg-gray-50 dark:bg-black">
                         <tr>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-600 uppercase tracking-wider font-mono w-24">ID</th>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-600 uppercase tracking-wider font-mono max-w-xs">Directive</th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-600 uppercase tracking-wider font-mono w-24">
+                                <button onClick={() => handleSort('id')} className="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-300">
+                                    ID {getSortIcon('id')}
+                                </button>
+                            </th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-600 uppercase tracking-wider font-mono max-w-xs">
+                                <button onClick={() => handleSort('title')} className="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-300">
+                                    Directive {getSortIcon('title')}
+                                </button>
+                            </th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-600 uppercase tracking-wider font-mono w-32">Project</th>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-600 uppercase tracking-wider font-mono w-32">Status</th>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-600 uppercase tracking-wider font-mono w-32">Priority</th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-600 uppercase tracking-wider font-mono w-32">
+                                <button onClick={() => handleSort('status')} className="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-300">
+                                    Status {getSortIcon('status')}
+                                </button>
+                            </th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-600 uppercase tracking-wider font-mono w-32">
+                                <button onClick={() => handleSort('priority')} className="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-300">
+                                    Priority {getSortIcon('priority')}
+                                </button>
+                            </th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-600 uppercase tracking-wider font-mono w-32">Agent</th>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-600 uppercase tracking-wider font-mono w-32">Deadline</th>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-600 uppercase tracking-wider font-mono w-32">Completed</th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-600 uppercase tracking-wider font-mono w-32">
+                                <button onClick={() => handleSort('deadline')} className="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-300">
+                                    Deadline {getSortIcon('deadline')}
+                                </button>
+                            </th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-600 uppercase tracking-wider font-mono w-32">
+                                <button onClick={() => handleSort('completedAt')} className="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-300">
+                                    Completed {getSortIcon('completedAt')}
+                                </button>
+                            </th>
                             <th scope="col" className="relative px-6 py-3 w-20"><span className="sr-only">View</span></th>
                         </tr>
                     </thead>
@@ -197,8 +454,76 @@ export const Dashboard: React.FC = () => {
                                 </td>
                             </tr>
                         ) : (
-                            paginatedTasks.map(task => (
-                                <tr key={task.id} className="hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors group">
+                            paginatedTasks.map((task, index) => (
+                                <tr 
+                                    key={task.id} 
+                                    draggable={!isViewer}
+                                    onDragStart={(e) => {
+                                        if (!isViewer) {
+                                            setDraggedTaskId(task.id);
+                                            e.dataTransfer.effectAllowed = 'move';
+                                        }
+                                    }}
+                                    onDragOver={(e) => {
+                                        if (!isViewer && draggedTaskId && draggedTaskId !== task.id) {
+                                            e.preventDefault();
+                                            setDragOverIndex(index);
+                                        }
+                                    }}
+                                    onDragLeave={() => setDragOverIndex(null)}
+                                    onDrop={async (e) => {
+                                        e.preventDefault();
+                                        if (!isViewer && draggedTaskId && draggedTaskId !== task.id) {
+                                            const draggedIndex = paginatedTasks.findIndex(t => t.id === draggedTaskId);
+                                            const targetIndex = index;
+                                            
+                                            // Calculate new order values
+                                            const tasksToUpdate: Array<{id: string, order: number}> = [];
+                                            const startIdx = Math.min(draggedIndex, targetIndex);
+                                            const endIdx = Math.max(draggedIndex, targetIndex);
+                                            
+                                            if (draggedIndex < targetIndex) {
+                                                // Moving down
+                                                for (let i = startIdx; i <= endIdx; i++) {
+                                                    const t = paginatedTasks[i];
+                                                    if (i === draggedIndex) {
+                                                        tasksToUpdate.push({ id: t.id, order: paginatedTasks[targetIndex].order || targetIndex });
+                                                    } else if (i > draggedIndex && i <= targetIndex) {
+                                                        tasksToUpdate.push({ id: t.id, order: (t.order || i) - 1 });
+                                                    }
+                                                }
+                                            } else {
+                                                // Moving up
+                                                for (let i = startIdx; i <= endIdx; i++) {
+                                                    const t = paginatedTasks[i];
+                                                    if (i === draggedIndex) {
+                                                        tasksToUpdate.push({ id: t.id, order: paginatedTasks[targetIndex].order || targetIndex });
+                                                    } else if (i < draggedIndex && i >= targetIndex) {
+                                                        tasksToUpdate.push({ id: t.id, order: (t.order || i) + 1 });
+                                                    }
+                                                }
+                                            }
+                                            
+                                            // Update tasks with new order
+                                            for (const update of tasksToUpdate) {
+                                                const taskToUpdate = tasks.find(t => t.id === update.id);
+                                                if (taskToUpdate) {
+                                                    await updateTask({ ...taskToUpdate, order: update.order });
+                                                }
+                                            }
+                                            
+                                            setDraggedTaskId(null);
+                                            setDragOverIndex(null);
+                                        }
+                                    }}
+                                    className={`hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors group ${
+                                        !isViewer ? 'cursor-move' : ''
+                                    } ${
+                                        dragOverIndex === index ? 'bg-blue-50 dark:bg-blue-900/20 border-t-2 border-blue-500 dark:border-neon-cyan' : ''
+                                    } ${
+                                        draggedTaskId === task.id ? 'opacity-50' : ''
+                                    }`}
+                                >
                                     <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-500 dark:text-gray-600 font-mono">
                                         #{task.id}
                                     </td>

@@ -8,15 +8,26 @@ export const LoginPage: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const { login } = useApp();
   const navigate = useNavigate();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (login(username, password)) {
-      navigate('/dashboard');
-    } else {
-      setError('ACCESS DENIED: Invalid Identity or Key');
+    setError('');
+    setIsLoading(true);
+    
+    try {
+      const success = await login(username, password);
+      if (success) {
+        navigate('/dashboard');
+      } else {
+        setError('ACCESS DENIED: Invalid Identity or Key');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'ACCESS DENIED: Login failed');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -62,8 +73,8 @@ export const LoginPage: React.FC = () => {
               </div>
             )}
 
-            <TerminalButton type="submit" className="w-full" variant="primary">
-              CONNECT
+            <TerminalButton type="submit" className="w-full" variant="primary" disabled={isLoading}>
+              {isLoading ? 'CONNECTING...' : 'CONNECT'}
             </TerminalButton>
             
             <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800 text-center">

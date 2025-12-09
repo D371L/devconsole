@@ -25,9 +25,10 @@ interface AppContextType {
   toggleSound: () => void;
   toggleSnakeMode: () => void;
   toggleDigitalRainMode: () => void;
-  login: (username: string, password?: string) => boolean;
+  login: (username: string, password?: string) => Promise<boolean>;
   logout: () => void;
   addUser: (user: User) => void;
+  updateUser: (user: User) => void;
   deleteUser: (id: string) => void;
   addTask: (task: Task) => void;
   updateTask: (task: Task) => void;
@@ -212,25 +213,59 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       SoundService.playClick();
   }
 
-  const login = (username: string, password?: string): boolean => {
-    const user = users.find(u => u.username === username);
-    if (user && user.password === password) {
-      setCurrentUser(user);
-      // Показываем приветствие только один раз (используем sessionStorage)
-      const welcomeShown = sessionStorage.getItem('devconsole_welcome_shown');
-      if (!welcomeShown) {
-        showNotification(`Welcome back, ${user.username}`, 'success');
-        sessionStorage.setItem('devconsole_welcome_shown', 'true');
+  const login = async (username: string, password?: string): Promise<boolean> => {
+    try {
+      // Try API login first
+      if (useAPI && apiChecked) {
+        try {
+          const response = await apiService.login(username, password || '');
+          setCurrentUser(response.user);
+          setUsers(prev => {
+            const existing = prev.find(u => u.id === response.user.id);
+            if (existing) {
+              return prev.map(u => u.id === response.user.id ? response.user : u);
+            }
+            return [...prev, response.user];
+          });
+          
+          const welcomeShown = sessionStorage.getItem('devconsole_welcome_shown');
+          if (!welcomeShown) {
+            showNotification(`Welcome back, ${response.user.username}`, 'success');
+            sessionStorage.setItem('devconsole_welcome_shown', 'true');
+          }
+          return true;
+        } catch (error) {
+          console.error('API login failed:', error);
+          // Fall through to local login
+        }
       }
-      return true;
+      
+      // Fallback to local login (for demo/offline mode)
+      const user = users.find(u => u.username === username);
+      if (user && user.password === password) {
+        setCurrentUser(user);
+        const welcomeShown = sessionStorage.getItem('devconsole_welcome_shown');
+        if (!welcomeShown) {
+          showNotification(`Welcome back, ${user.username}`, 'success');
+          sessionStorage.setItem('devconsole_welcome_shown', 'true');
+        }
+        return true;
+      }
+      
+      SoundService.playError();
+      return false;
+    } catch (error) {
+      console.error('Login error:', error);
+      SoundService.playError();
+      return false;
     }
-    SoundService.playError();
-    return false;
   };
 
   const logout = () => {
+    if (useAPI && apiChecked) {
+      apiService.clearAuthToken();
+    }
     setCurrentUser(null);
-    // NO LocalStorage - current user is not persisted
     showNotification('Logged out successfully', 'info');
   };
 
@@ -245,6 +280,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       console.error('Failed to create user:', error);
       setUsers(prev => [...prev, user]); // Still add locally
       showNotification(`User ${user.username} created (local)`, 'success');
+    }
+  };
+
+  const updateUser = async (user: User) => {
+    try {
+      if (useAPI && apiChecked) {
+        await apiService.updateUser(user);
+      }
+      setUsers(prev => prev.map(u => u.id === user.id ? user : u));
+      showNotification(`User ${user.username} updated`, 'success');
+    } catch (error) {
+      console.error('Failed to update user:', error);
+      setUsers(prev => prev.map(u => u.id === user.id ? user : u));
+      showNotification(`User ${user.username} updated (local)`, 'success');
     }
   };
 
@@ -350,9 +399,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setAllTasks(prev => prev.map(t => t.id === updatedTask.id ? taskWithLogs : t));
 
     if (xpGained > 0 && currentUser) {
-        const updatedUser = { ...currentUser, xp: currentUser.xp + xpGained };
+        let updatedUser = { ...currentUser, xp: currentUser.xp + xpGained };
+        
+        // Check for new achievements
+        let hasNewAchievements = false;
+        const shownAchievements = JSON.parse(sessionStorage.getItem('devconsole_shown_achievements') || '[]');
+        
+        ACHIEVEMENTS.forEach(ach => {
+            if (!updatedUser.achievements.includes(ach.id)) {
+                if (ach.condition(updatedUser, tasks)) {
+                    updatedUser.achievements.push(ach.id);
+                    updatedUser.xp += ach.xpBonus;
+                    hasNewAchievements = true;
+                    
+                    if (!shownAchievements.includes(ach.id)) {
+                        showNotification(`ACHIEVEMENT UNLOCKED: ${ach.title} ${ach.icon} +${ach.xpBonus} XP`, 'success');
+                        shownAchievements.push(ach.id);
+                        sessionStorage.setItem('devconsole_shown_achievements', JSON.stringify(shownAchievements));
+                    }
+                }
+            }
+        });
+        
         setCurrentUser(updatedUser);
         setUsers(prev => prev.map(u => u.id === currentUser.id ? updatedUser : u));
+        
+        // Update user in API
+        try {
+            if (useAPI && apiChecked) {
+                await apiService.updateUser(updatedUser);
+            }
+        } catch (error) {
+            console.error('Failed to update user achievements:', error);
+        }
+        
         showNotification(`Task Complete! +${xpGained} XP`, 'success');
     }
   };
@@ -536,8 +616,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       toggleDigitalRainMode,
       login,
       logout,
-      addUser,
-      deleteUser,
+    addUser,
+    updateUser,
+    deleteUser,
       addTask,
       updateTask,
       deleteTask,
