@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { User, Task, Role, Notification, Priority, Snippet, TaskStatus, Project } from '../types';
 import { INITIAL_USERS, INITIAL_TASKS, INITIAL_SNIPPETS, ACHIEVEMENTS, INITIAL_PROJECTS } from '../constants';
 import { NotificationToast } from '../components/TerminalUI';
@@ -55,15 +55,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [allTasks, setAllTasks] = useState<Task[]>([]); // Все задачи (без фильтрации)
   const [allProjects, setAllProjects] = useState<Project[]>([]); // Все проекты (без фильтрации)
   const [snippets, setSnippets] = useState<Snippet[]>([]);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   
-  // Фильтрованные данные для VIEWER
-  const tasks = currentUser?.role === Role.VIEWER && currentUser.allowedProjects
-    ? allTasks.filter(task => currentUser.allowedProjects!.includes(task.projectId))
-    : allTasks;
+  // Фильтрованные данные для VIEWER (используем useMemo для правильной реактивности)
+  const tasks = useMemo(() => {
+    return currentUser?.role === Role.VIEWER && currentUser.allowedProjects
+      ? allTasks.filter(task => currentUser.allowedProjects!.includes(task.projectId))
+      : allTasks;
+  }, [allTasks, currentUser]);
   
-  const projects = currentUser?.role === Role.VIEWER && currentUser.allowedProjects
-    ? allProjects.filter(project => currentUser.allowedProjects!.includes(project.id))
-    : allProjects;
+  const projects = useMemo(() => {
+    return currentUser?.role === Role.VIEWER && currentUser.allowedProjects
+      ? allProjects.filter(project => currentUser.allowedProjects!.includes(project.id))
+      : allProjects;
+  }, [allProjects, currentUser]);
 
   // Load data from API only - NO LocalStorage for data
   useEffect(() => {
@@ -109,7 +114,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     loadData();
   }, []);
 
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [accentColor, setAccentColorState] = useState<AccentColor>('cyan');
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -390,13 +394,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     try {
       if (useAPI && apiChecked) {
-        await apiService.updateTask(updatedTask.id, taskWithLogs);
+        const savedTask = await apiService.updateTask(updatedTask.id, taskWithLogs);
+        // Используем задачу, возвращенную с сервера, чтобы гарантировать синхронизацию
+        setAllTasks(prev => prev.map(t => t.id === updatedTask.id ? savedTask : t));
+      } else {
+        setAllTasks(prev => prev.map(t => t.id === updatedTask.id ? taskWithLogs : t));
       }
     } catch (error) {
       console.error('Failed to update task:', error);
+      // В случае ошибки все равно обновляем локально
+      setAllTasks(prev => prev.map(t => t.id === updatedTask.id ? taskWithLogs : t));
     }
-
-    setAllTasks(prev => prev.map(t => t.id === updatedTask.id ? taskWithLogs : t));
 
     if (xpGained > 0 && currentUser) {
         let updatedUser = { ...currentUser, xp: currentUser.xp + xpGained };

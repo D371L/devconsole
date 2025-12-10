@@ -4,6 +4,7 @@ import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
 import { LoginPage } from './pages/LoginPage';
 import { Dashboard } from './pages/Dashboard';
+import { CalendarPage } from './pages/CalendarPage';
 import { AdminPanel } from './pages/AdminPanel';
 import { TaskDetail } from './pages/TaskDetail';
 import { Snippets } from './pages/Snippets';
@@ -37,6 +38,14 @@ const AppRoutes = () => {
         <ProtectedRoute>
           <Layout>
             <Dashboard />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/calendar" element={
+        <ProtectedRoute>
+          <Layout>
+            <CalendarPage />
           </Layout>
         </ProtectedRoute>
       } />

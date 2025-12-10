@@ -159,10 +159,10 @@ export const TaskStatsChart: React.FC<{ tasks: Task[] }> = ({ tasks }) => {
     const getPercent = (count: number) => (count / total) * 100;
 
     return (
-        <div className="bg-white dark:bg-black border border-gray-200 dark:border-gray-800 p-6 rounded-lg dark:rounded-none shadow-sm mb-8">
-            <h3 className="text-sm font-bold text-gray-700 dark:text-gray-400 uppercase tracking-wider mb-4">Task Distribution Protocol</h3>
+        <div className="bg-white dark:bg-black border border-gray-200 dark:border-gray-800 p-4 rounded-lg dark:rounded-none shadow-sm">
+            <h3 className="text-xs font-bold text-gray-700 dark:text-gray-400 uppercase tracking-wider mb-3">Task Distribution Protocol</h3>
             
-            <div className="flex h-4 bg-gray-100 dark:bg-gray-900 rounded-full dark:rounded-none overflow-hidden mb-4">
+            <div className="flex h-3 bg-gray-100 dark:bg-gray-900 rounded-full dark:rounded-none overflow-hidden mb-3">
                 <div style={{ width: `${getPercent(stats.TODO)}%` }} className="bg-gray-400 transition-all duration-500" title="TODO"></div>
                 <div style={{ width: `${getPercent(stats.IN_PROGRESS)}%` }} className="bg-blue-500 dark:bg-neon-cyan transition-all duration-500" title="IN PROGRESS"></div>
                 <div style={{ width: `${getPercent(stats.REVIEW)}%` }} className="bg-purple-500 dark:bg-neon-purple transition-all duration-500" title="REVIEW"></div>
@@ -170,11 +170,11 @@ export const TaskStatsChart: React.FC<{ tasks: Task[] }> = ({ tasks }) => {
                 <div style={{ width: `${getPercent(stats.BLOCKED)}%` }} className="bg-red-500 transition-all duration-500" title="BLOCKED"></div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
+            <div className="grid grid-cols-5 gap-2 text-center">
                 {Object.entries(stats).map(([status, count]) => (
                     <div key={status} className="flex flex-col items-center">
-                        <span className="text-xs text-gray-500 dark:text-gray-600 font-mono mb-1">{status.replace('_', ' ')}</span>
-                        <span className="text-lg font-bold text-gray-900 dark:text-gray-200">{count}</span>
+                        <span className="text-[10px] text-gray-500 dark:text-gray-600 font-mono mb-0.5">{status.replace('_', ' ')}</span>
+                        <span className="text-base font-bold text-gray-900 dark:text-gray-200">{count}</span>
                     </div>
                 ))}
             </div>
@@ -222,7 +222,7 @@ export const MetricsWidgets: React.FC<{ tasks: Task[], currentUser: User | null 
     }).length;
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             <div className="bg-white dark:bg-black border border-gray-200 dark:border-gray-800 p-4 rounded-lg dark:rounded-none shadow-sm">
                 <div className="text-xs text-gray-500 dark:text-gray-600 uppercase tracking-wider font-mono mb-1">Active Tasks</div>
                 <div className="text-2xl font-bold text-gray-900 dark:text-gray-200">{activeTasks}</div>
@@ -289,28 +289,28 @@ export const CalendarWidget: React.FC<{ tasks: Task[] }> = ({ tasks }) => {
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
     return (
-        <div className="bg-white dark:bg-black border border-gray-200 dark:border-gray-800 p-4 rounded-lg dark:rounded-none shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-                <button onClick={() => navigateMonth(-1)} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+        <div className="bg-white dark:bg-black border border-gray-200 dark:border-gray-800 p-0.5 rounded-lg dark:rounded-none shadow-sm max-w-[100px] mx-auto">
+            <div className="flex items-center justify-between mb-0.5 px-0.5">
+                <button onClick={() => navigateMonth(-1)} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-[13px] px-0.5">
                     ←
                 </button>
-                <h3 className="text-sm font-bold text-gray-700 dark:text-gray-400 uppercase tracking-wider">
-                    {monthNames[month]} {year}
+                <h3 className="text-[13px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-wider">
+                    {monthNames[month].substring(0, 3)} {year}
                 </h3>
-                <button onClick={() => navigateMonth(1)} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                <button onClick={() => navigateMonth(1)} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-[13px] px-0.5">
                     →
                 </button>
             </div>
 
-            <div className="grid grid-cols-7 gap-1 mb-2">
+            <div className="grid grid-cols-7 gap-0 mb-0.5 px-0.5">
                 {dayNames.map(day => (
-                    <div key={day} className="text-center text-xs font-bold text-gray-500 dark:text-gray-600 py-1">
-                        {day}
+                    <div key={day} className="text-center text-[10px] font-bold text-gray-500 dark:text-gray-600">
+                        {day.substring(0, 1)}
                     </div>
                 ))}
             </div>
 
-            <div className="grid grid-cols-7 gap-1">
+            <div className="grid grid-cols-7 gap-0 justify-items-center px-0.5">
                 {days.map((date, idx) => {
                     const tasksForDate = date ? getTasksForDate(date) : [];
                     const isToday = date && date.toDateString() === new Date().toDateString();
@@ -321,38 +321,17 @@ export const CalendarWidget: React.FC<{ tasks: Task[] }> = ({ tasks }) => {
                             key={idx}
                             onClick={() => date && setSelectedDate(date)}
                             className={`
-                                aspect-square p-1 text-xs cursor-pointer rounded dark:rounded-none
+                                w-2.5 h-2.5 min-w-0 cursor-pointer rounded dark:rounded-none flex items-center justify-center flex-shrink-0
                                 ${!date ? 'bg-transparent' : ''}
-                                ${date && isToday ? 'bg-blue-100 dark:bg-blue-900/30 border-2 border-blue-500 dark:border-neon-cyan' : ''}
-                                ${date && isSelected && !isToday ? 'bg-gray-200 dark:bg-gray-800 border-2 border-gray-400 dark:border-gray-600' : ''}
-                                ${date && !isToday && !isSelected ? 'hover:bg-gray-100 dark:hover:bg-gray-900 border border-transparent hover:border-gray-300 dark:hover:border-gray-700' : ''}
+                                ${date && isToday ? 'bg-blue-100 dark:bg-blue-900/30 border border-blue-500 dark:border-neon-cyan' : ''}
+                                ${date && isSelected && !isToday ? 'bg-gray-200 dark:bg-gray-800 border border-gray-400 dark:border-gray-600' : ''}
+                                ${date && !isToday && !isSelected ? 'hover:bg-gray-100 dark:hover:bg-gray-900' : ''}
                             `}
                         >
                             {date && (
-                                <>
-                                    <div className="text-center font-mono mb-1">
-                                        {date.getDate()}
-                                    </div>
-                                    {tasksForDate.length > 0 && (
-                                        <div className="flex justify-center gap-0.5">
-                                            {tasksForDate.slice(0, 3).map((task, i) => (
-                                                <div
-                                                    key={task.id}
-                                                    className="w-1 h-1 rounded-full"
-                                                    style={{
-                                                        backgroundColor: task.priority === Priority.CRITICAL ? '#ef4444' :
-                                                                       task.priority === Priority.HIGH ? '#f59e0b' :
-                                                                       task.priority === Priority.MEDIUM ? '#3b82f6' : '#6b7280'
-                                                    }}
-                                                    title={task.title}
-                                                />
-                                            ))}
-                                            {tasksForDate.length > 3 && (
-                                                <span className="text-[8px] text-gray-400">+{tasksForDate.length - 3}</span>
-                                            )}
-                                        </div>
-                                    )}
-                                </>
+                                <div className="text-center font-mono leading-none text-[13px]">
+                                    {date.getDate()}
+                                </div>
                             )}
                         </div>
                     );
@@ -360,16 +339,16 @@ export const CalendarWidget: React.FC<{ tasks: Task[] }> = ({ tasks }) => {
             </div>
 
             {selectedDate && (
-                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-800">
-                    <div className="text-xs font-bold text-gray-500 dark:text-gray-600 uppercase tracking-wider mb-2">
+                <div className="mt-0.5 pt-0.5 border-t border-gray-200 dark:border-gray-800">
+                    <div className="text-[13px] font-bold text-gray-500 dark:text-gray-600 uppercase tracking-wider mb-0.5">
                         {selectedDate.toLocaleDateString()}
                     </div>
-                    <div className="space-y-1 max-h-32 overflow-y-auto">
+                    <div className="space-y-0.5 max-h-12 overflow-y-auto">
                         {getTasksForDate(selectedDate).length === 0 ? (
-                            <div className="text-xs text-gray-400 italic">No deadlines</div>
+                            <div className="text-[13px] text-gray-400 italic">No deadlines</div>
                         ) : (
                             getTasksForDate(selectedDate).map(task => (
-                                <div key={task.id} className="text-xs text-gray-700 dark:text-gray-300">
+                                <div key={task.id} className="text-[13px] text-gray-700 dark:text-gray-300">
                                     • {task.title}
                                 </div>
                             ))

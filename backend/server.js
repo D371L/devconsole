@@ -52,6 +52,7 @@ const strictLimiter = rateLimit({
 });
 
 // Middleware
+app.set('trust proxy', 1); // Trust first proxy (Nginx)
 app.use(cors());
 app.use(express.json({ limit: '50mb' })); // Увеличиваем лимит для больших payload (Base64 attachments)
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
@@ -458,7 +459,7 @@ app.post('/api/tasks', authenticateToken, async (req, res) => {
       ]
     );
     const row = result.rows[0];
-    res.status(201).json({
+    const createdTask = {
       id: row.id,
       title: row.title,
       description: row.description,
@@ -479,7 +480,37 @@ app.post('/api/tasks', authenticateToken, async (req, res) => {
       dependsOn: Array.isArray(row.depends_on) ? row.depends_on : [],
       tags: Array.isArray(row.tags) ? row.tags : [],
       order: row.order_index || 0
-    });
+    };
+    
+    // Send Telegram notification for new task
+    try {
+      const creatorResult = await query('SELECT username FROM users WHERE id = $1', [task.createdBy]);
+      const creatorName = creatorResult.rows[0]?.username || 'Unknown';
+      
+      let message = `📝 *NEW TASK CREATED*\n\n` +
+        `Task: *${task.title}*\n` +
+        `ID: \`${task.id}\`\n` +
+        `Status: ${task.status}\n` +
+        `Priority: ${task.priority}\n` +
+        `Created by: ${creatorName}\n`;
+      
+      if (task.assignedTo) {
+        const assigneeResult = await query('SELECT username FROM users WHERE id = $1', [task.assignedTo]);
+        const assigneeName = assigneeResult.rows[0]?.username || 'Unknown';
+        message += `Assigned to: ${assigneeName}\n`;
+      }
+      
+      if (task.deadline) {
+        const deadlineDate = new Date(task.deadline);
+        message += `Deadline: ${deadlineDate.toLocaleDateString()}\n`;
+      }
+      
+      sendTelegramNotification(message).catch(() => {});
+    } catch (telegramError) {
+      console.error('Failed to send Telegram notification for new task:', telegramError);
+    }
+    
+    res.status(201).json(createdTask);
   } catch (error) {
     console.error('Error creating task:', error);
     console.error('Error details:', {
@@ -537,6 +568,10 @@ app.put('/api/tasks/:id', authenticateToken, async (req, res) => {
     const tags = Array.isArray(task.tags) ? task.tags : [];
     const orderIndex = task.order || 0;
     
+    // Get old task data for comparison
+    const oldTaskResult = await query('SELECT * FROM tasks WHERE id = $1', [id]);
+    const oldTaskRow = oldTaskResult.rows[0] || null;
+    
     const result = await query(
       `UPDATE tasks SET 
        title = $1, description = $2, project_id = $3, assigned_to = $4, deadline = $5, completed_at = $6,
@@ -558,6 +593,9 @@ app.put('/api/tasks/:id', authenticateToken, async (req, res) => {
         activityLogJson,          // jsonb - валидная JSON строка
         timeSpent,                // integer - округленное значение
         task.timerStartedAt || null,
+        dependsOn,                // text[] - массив ID задач
+        tags,                     // text[] - массив тэгов
+        orderIndex,               // integer - порядок сортировки
         id
       ]
     );
@@ -565,7 +603,7 @@ app.put('/api/tasks/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Task not found' });
     }
     const row = result.rows[0];
-    res.json({
+    const updatedTask = {
       id: row.id,
       title: row.title,
       description: row.description,
@@ -592,8 +630,12 @@ app.put('/api/tasks/:id', authenticateToken, async (req, res) => {
     const oldStatus = oldTaskRow?.status;
     
     if (oldStatus && oldStatus !== task.status) {
-      const userResult = await query('SELECT username FROM users WHERE id = $1', [task.assignedTo || task.createdBy]);
-      const username = userResult.rows[0]?.username || 'Unknown';
+      // Используем реального пользователя, который обновил задачу (из JWT токена)
+      const updatedByUserId = req.user?.id;
+      const userResult = updatedByUserId 
+        ? await query('SELECT username FROM users WHERE id = $1', [updatedByUserId])
+        : { rows: [] };
+      const username = userResult.rows[0]?.username || req.user?.username || 'Unknown';
       
       let message = '';
       if (task.status === 'DONE') {

@@ -130,6 +130,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
         <nav className="flex-1">
           <NavItem to="/dashboard" label="Dashboard" />
+          <NavItem to="/calendar" label="Calendar" />
           {/* Only show New Task for Developers and Admins */}
           {currentUser?.role !== Role.VIEWER && (
              <NavItem to="/create-task" label="New Task" />

@@ -3,7 +3,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { StatusBadge, PriorityBadge } from '../components/TerminalUI';
-import { KanbanBoard, TaskStatsChart, MetricsWidgets, CalendarWidget } from '../components/DashboardWidgets';
+import { KanbanBoard, TaskStatsChart, MetricsWidgets } from '../components/DashboardWidgets';
 import { GraphView } from '../components/GraphView';
 import { TaskStatus, Role, Priority, Task } from '../types';
 
@@ -202,17 +202,10 @@ export const Dashboard: React.FC = () => {
         </div>
       </header>
 
-      {/* Metrics Widgets */}
-      <MetricsWidgets tasks={tasks} currentUser={currentUser} />
-      
       {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        <div className="lg:col-span-2">
-          <TaskStatsChart tasks={tasks} />
-        </div>
-        <div>
-          <CalendarWidget tasks={tasks} />
-        </div>
+      <div className="space-y-6 mb-8">
+        <MetricsWidgets tasks={tasks} currentUser={currentUser} />
+        <TaskStatsChart tasks={tasks} />
       </div>
 
       <div className="bg-white dark:bg-black border border-gray-200 dark:border-gray-800 rounded-lg dark:rounded-none shadow-sm overflow-hidden mb-6">
@@ -646,6 +639,7 @@ export const Dashboard: React.FC = () => {
             </div>
         )}
       </div>
+    </div>
     </div>
   );
 };
