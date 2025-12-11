@@ -42,6 +42,22 @@ if [ -d "/var/www/devconsole-dist" ]; then
     echo "📦 Копируем файлы frontend..."
     rm -rf /var/www/devconsole-dist/*
     cp -r dist/* /var/www/devconsole-dist/
+    # Копируем favicon.png или favicon.svg из public или корня (Vite копирует из public в dist)
+    if [ -f "dist/favicon.png" ]; then
+        cp dist/favicon.png /var/www/devconsole-dist/favicon.png
+    elif [ -f "public/favicon.png" ]; then
+        cp public/favicon.png /var/www/devconsole-dist/favicon.png
+    elif [ -f "favicon.png" ]; then
+        cp favicon.png /var/www/devconsole-dist/favicon.png
+    fi
+    # Также копируем favicon.svg если есть
+    if [ -f "dist/favicon.svg" ]; then
+        cp dist/favicon.svg /var/www/devconsole-dist/favicon.svg
+    elif [ -f "public/favicon.svg" ]; then
+        cp public/favicon.svg /var/www/devconsole-dist/favicon.svg
+    elif [ -f "favicon.svg" ]; then
+        cp favicon.svg /var/www/devconsole-dist/favicon.svg
+    fi
     echo "✅ Frontend файлы скопированы"
 else
     echo "⚠️  Директория /var/www/devconsole-dist не найдена"

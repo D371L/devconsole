@@ -5,8 +5,21 @@ import dotenv from 'dotenv';
 import axios from 'axios';
 import jwt from 'jsonwebtoken';
 import rateLimit from 'express-rate-limit';
+import multer from 'multer';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
 
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
 const JWT_SECRET = process.env.JWT_SECRET || 'devconsole_secret_key_change_in_production';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
@@ -51,11 +64,38 @@ const strictLimiter = rateLimit({
   message: 'Too many requests from this IP, please try again later.',
 });
 
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadsDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, `${uniqueSuffix}-${file.originalname}`);
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Allow all file types for now
+    cb(null, true);
+  }
+});
+
 // Middleware
-app.set('trust proxy', 1); // Trust first proxy (Nginx)
+// Trust proxy for rate limiting (must be before other middleware)
+app.set('trust proxy', 1);
+
 app.use(cors());
 app.use(express.json({ limit: '50mb' })); // Увеличиваем лимит для больших payload (Base64 attachments)
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// Serve uploaded files
+app.use('/uploads', express.static(uploadsDir));
 
 // Apply rate limiting to all API requests
 app.use('/api', limiter);
@@ -692,36 +732,39 @@ app.delete('/api/tasks/:id', authenticateToken, async (req, res) => {
 app.post('/api/tasks/:id/comments', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { text, userId } = req.body;
+    const { text, userId, mentions } = req.body;
     
-    const taskResult = await query('SELECT comments FROM tasks WHERE id = $1', [id]);
+    const taskResult = await query('SELECT comments, title FROM tasks WHERE id = $1', [id]);
     if (taskResult.rows.length === 0) {
       return res.status(404).json({ error: 'Task not found' });
     }
     
     const task = taskResult.rows[0];
-    const comments = task.comments || [];
+    const comments = Array.isArray(task.comments) ? task.comments : (task.comments ? [task.comments] : []);
     const newComment = {
       id: `c${Date.now()}`,
       userId,
       text,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      mentions: mentions && mentions.length > 0 ? mentions : undefined,
+      reactions: {}
     };
     comments.push(newComment);
     
     await query(
-      'UPDATE tasks SET comments = $1 WHERE id = $2',
-      [JSON.stringify(comments), id]  // jsonb - передаем как JSON строку
+      'UPDATE tasks SET comments = $1::jsonb WHERE id = $2',
+      [JSON.stringify(comments), id]
     );
     
     // Send notifications for mentions
-    if (mentions.length > 0 && task) {
+    if (mentions && mentions.length > 0) {
       const commentUserResult = await query('SELECT username FROM users WHERE id = $1', [userId]);
       const commentUser = commentUserResult.rows[0]?.username || 'Unknown';
       
-      for (const mentionedUsername of mentions) {
-        const mentionedUserResult = await query('SELECT id FROM users WHERE username = $1', [mentionedUsername]);
+      for (const mentionedUserId of mentions) {
+        const mentionedUserResult = await query('SELECT username FROM users WHERE id = $1', [mentionedUserId]);
         if (mentionedUserResult.rows.length > 0) {
+          const mentionedUsername = mentionedUserResult.rows[0].username;
           const message = `💬 *MENTION*\n\n` +
             `${mentionedUsername}, you were mentioned in a comment on task *${task.title}*\n\n` +
             `Comment by ${commentUser}: ${text.substring(0, 200)}${text.length > 200 ? '...' : ''}`;
@@ -732,6 +775,227 @@ app.post('/api/tasks/:id/comments', authenticateToken, async (req, res) => {
     
     res.status(201).json(newComment);
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Edit comment
+app.put('/api/tasks/:id/comments/:commentId', authenticateToken, async (req, res) => {
+  try {
+    const { id, commentId } = req.params;
+    const { text, mentions } = req.body;
+    const userId = req.user?.id;
+    
+    const taskResult = await query('SELECT comments FROM tasks WHERE id = $1', [id]);
+    if (taskResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+    
+    const task = taskResult.rows[0];
+    const comments = Array.isArray(task.comments) ? task.comments : (task.comments ? [task.comments] : []);
+    const commentIndex = comments.findIndex(c => c.id === commentId);
+    
+    if (commentIndex === -1) {
+      return res.status(404).json({ error: 'Comment not found' });
+    }
+    
+    // Only allow editing own comments
+    if (comments[commentIndex].userId !== userId) {
+      return res.status(403).json({ error: 'Not authorized to edit this comment' });
+    }
+    
+    comments[commentIndex] = {
+      ...comments[commentIndex],
+      text,
+      mentions: mentions && mentions.length > 0 ? mentions : comments[commentIndex].mentions,
+      edited: true,
+      editedAt: Date.now()
+    };
+    
+    await query(
+      'UPDATE tasks SET comments = $1::jsonb WHERE id = $2',
+      [JSON.stringify(comments), id]
+    );
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error editing comment:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete comment
+app.delete('/api/tasks/:id/comments/:commentId', authenticateToken, async (req, res) => {
+  try {
+    const { id, commentId } = req.params;
+    const userId = req.user?.id;
+    
+    const taskResult = await query('SELECT comments FROM tasks WHERE id = $1', [id]);
+    if (taskResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+    
+    const task = taskResult.rows[0];
+    const comments = Array.isArray(task.comments) ? task.comments : (task.comments ? [task.comments] : []);
+    const commentIndex = comments.findIndex(c => c.id === commentId);
+    
+    if (commentIndex === -1) {
+      return res.status(404).json({ error: 'Comment not found' });
+    }
+    
+    // Only allow deleting own comments
+    if (comments[commentIndex].userId !== userId) {
+      return res.status(403).json({ error: 'Not authorized to delete this comment' });
+    }
+    
+    comments.splice(commentIndex, 1);
+    
+    await query(
+      'UPDATE tasks SET comments = $1::jsonb WHERE id = $2',
+      [JSON.stringify(comments), id]
+    );
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting comment:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Add/remove reaction to comment
+app.post('/api/tasks/:id/comments/:commentId/reactions', authenticateToken, async (req, res) => {
+  try {
+    const { id, commentId } = req.params;
+    const { emoji } = req.body;
+    const userId = req.user?.id;
+    
+    const taskResult = await query('SELECT comments FROM tasks WHERE id = $1', [id]);
+    if (taskResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+    
+    const task = taskResult.rows[0];
+    const comments = Array.isArray(task.comments) ? task.comments : (task.comments ? [task.comments] : []);
+    const commentIndex = comments.findIndex(c => c.id === commentId);
+    
+    if (commentIndex === -1) {
+      return res.status(404).json({ error: 'Comment not found' });
+    }
+    
+    const comment = comments[commentIndex];
+    const reactions = comment.reactions || {};
+    const emojiReactions = reactions[emoji] || [];
+    const hasReacted = emojiReactions.includes(userId);
+    
+    const newReactions = { ...reactions };
+    if (hasReacted) {
+      // Remove reaction
+      newReactions[emoji] = emojiReactions.filter(id => id !== userId);
+      if (newReactions[emoji].length === 0) {
+        delete newReactions[emoji];
+      }
+    } else {
+      // Add reaction
+      newReactions[emoji] = [...emojiReactions, userId];
+    }
+    
+    comments[commentIndex] = {
+      ...comment,
+      reactions: newReactions
+    };
+    
+    await query(
+      'UPDATE tasks SET comments = $1::jsonb WHERE id = $2',
+      [JSON.stringify(comments), id]
+    );
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error adding reaction:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ========== FILES ROUTES ==========
+// Upload file
+app.post('/api/files/upload', authenticateToken, upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const fileInfo = {
+      filename: req.file.filename,
+      originalName: req.file.originalname,
+      size: req.file.size,
+      mimetype: req.file.mimetype,
+      uploadedBy: req.user?.id || 'system',
+      uploadedAt: Date.now(),
+      url: `/uploads/${req.file.filename}`
+    };
+
+    // Create symlink in frontend directory for immediate access
+    const frontendUploadsDir = '/var/www/devconsole-dist/uploads';
+    try {
+      if (!fs.existsSync(frontendUploadsDir)) {
+        fs.mkdirSync(frontendUploadsDir, { recursive: true });
+      }
+      const sourcePath = path.join(uploadsDir, req.file.filename);
+      const linkPath = path.join(frontendUploadsDir, req.file.filename);
+      if (!fs.existsSync(linkPath)) {
+        fs.symlinkSync(sourcePath, linkPath);
+        console.log(`Created symlink: ${linkPath} -> ${sourcePath}`);
+      }
+    } catch (symlinkError) {
+      console.error('Failed to create symlink for uploaded file:', symlinkError);
+      // Don't fail the upload, file is still accessible via backend
+    }
+
+    res.status(201).json(fileInfo);
+  } catch (error) {
+    console.error('Error uploading file:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get file info (not the file itself, which is served statically)
+app.get('/api/files/:filename', optionalAuth, async (req, res) => {
+  try {
+    const { filename } = req.params;
+    const filePath = path.join(uploadsDir, filename);
+    
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    const stats = fs.statSync(filePath);
+    res.json({
+      filename,
+      size: stats.size,
+      url: `/uploads/${filename}`
+    });
+  } catch (error) {
+    console.error('Error getting file info:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete file
+app.delete('/api/files/:filename', authenticateToken, async (req, res) => {
+  try {
+    const { filename } = req.params;
+    const filePath = path.join(uploadsDir, filename);
+    
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    // Only allow deletion by uploader or admin
+    // In a real app, you'd check file metadata from DB
+    fs.unlinkSync(filePath);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting file:', error);
     res.status(500).json({ error: error.message });
   }
 });

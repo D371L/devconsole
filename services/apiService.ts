@@ -51,18 +51,18 @@ class ApiService {
     return this.request<any>('/auth/verify');
   }
 
-  private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  private async request<T>(endpoint: string, options?: RequestInit, retries: number = 2): Promise<T> {
+    const token = this.getAuthToken();
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      ...options?.headers,
+    };
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     try {
-      const token = this.getAuthToken();
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-        ...options?.headers,
-      };
-
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
       const response = await fetch(`${API_URL}${endpoint}`, {
         ...options,
         headers,
@@ -71,10 +71,23 @@ class ApiService {
       if (!response.ok) {
         if (response.status === 401 || response.status === 403) {
           this.clearAuthToken();
-          throw new Error('Authentication required');
+          throw new Error('Authentication required. Please log in again.');
         }
-        const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(error.error || `API Error: ${response.status}`);
+        
+        // Try to parse error details
+        let errorMessage = `Request failed with status ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.message || errorMessage;
+          if (errorData.detail) {
+            errorMessage += `: ${errorData.detail}`;
+          }
+        } catch {
+          // If JSON parsing fails, use status text
+          errorMessage = response.statusText || errorMessage;
+        }
+        
+        throw new Error(errorMessage);
       }
 
       if (response.status === 204) {
@@ -83,8 +96,21 @@ class ApiService {
 
       return await response.json();
     } catch (error) {
+      // Retry on network errors (but not on 4xx/5xx errors)
+      if (retries > 0 && error instanceof TypeError && error.message.includes('fetch')) {
+        console.warn(`API request failed, retrying... (${retries} attempts left)`);
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+        return this.request<T>(endpoint, options, retries - 1);
+      }
+      
       console.error(`API request failed: ${endpoint}`, error);
-      throw error;
+      
+      // Provide user-friendly error messages
+      if (error instanceof Error) {
+        throw error;
+      }
+      
+      throw new Error(`Network error: ${error}`);
     }
   }
 
@@ -146,11 +172,75 @@ class ApiService {
     });
   }
 
-  async addComment(taskId: string, text: string, userId: string): Promise<Comment> {
+  async addComment(taskId: string, text: string, userId: string, mentions?: string[]): Promise<Comment> {
     return this.request<Comment>(`/tasks/${taskId}/comments`, {
       method: 'POST',
-      body: JSON.stringify({ text, userId }),
+      body: JSON.stringify({ text, userId, mentions }),
     });
+  }
+
+  async editComment(taskId: string, commentId: string, text: string, mentions?: string[]): Promise<void> {
+    return this.request<void>(`/tasks/${taskId}/comments/${commentId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ text, mentions }),
+    });
+  }
+
+  async deleteComment(taskId: string, commentId: string): Promise<void> {
+    return this.request<void>(`/tasks/${taskId}/comments/${commentId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async addReaction(taskId: string, commentId: string, emoji: string): Promise<void> {
+    return this.request<void>(`/tasks/${taskId}/comments/${commentId}/reactions`, {
+      method: 'POST',
+      body: JSON.stringify({ emoji }),
+    });
+  }
+
+  // ========== FILES ==========
+  async uploadFile(file: File): Promise<{ filename: string; url: string; originalName: string; size: number }> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const token = this.getAuthToken();
+    const headers: HeadersInit = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${API_URL}/files/upload`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        this.clearAuthToken();
+        throw new Error('Authentication required');
+      }
+      const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(error.error || `API Error: ${response.status}`);
+    }
+
+    return await response.json();
+  }
+
+  async deleteFile(filename: string): Promise<void> {
+    return this.request<void>(`/files/${filename}`, {
+      method: 'DELETE',
+    });
+  }
+
+  getFileUrl(filename: string): string {
+    const baseUrl = API_URL.replace('/api', '');
+    // If baseUrl is empty (relative path), use absolute path
+    if (!baseUrl || baseUrl === '') {
+      return `/uploads/${filename}`;
+    }
+    return `${baseUrl}/uploads/${filename}`;
   }
 
   // ========== PROJECTS ==========

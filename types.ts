@@ -42,6 +42,10 @@ export interface Comment {
   userId: string;
   text: string;
   timestamp: number;
+  mentions?: string[]; // Array of user IDs mentioned in the comment
+  reactions?: { [emoji: string]: string[] }; // Map of emoji to array of user IDs who reacted
+  edited?: boolean; // Whether the comment has been edited
+  editedAt?: number; // Timestamp when comment was last edited
 }
 
 export interface ActivityLog {
@@ -49,6 +53,10 @@ export interface ActivityLog {
   userId: string;
   action: string;
   timestamp: number;
+  // Detailed change tracking
+  fieldName?: string; // Name of the field that changed (e.g., 'title', 'status', 'priority')
+  oldValue?: any; // Previous value
+  newValue?: any; // New value
 }
 
 export interface Subtask {
@@ -69,7 +77,7 @@ export interface Task {
   completedAt?: number | null; // Timestamp when task was completed (status changed to DONE)
   status: TaskStatus;
   priority: Priority;
-  attachments: string[]; // Base64 strings for simplicity
+  attachments: string[]; // Array of file URLs (from server) or base64 strings (legacy)
   subtasks: Subtask[];
   comments: Comment[];
   activityLog: ActivityLog[];
@@ -80,6 +88,7 @@ export interface Task {
   dependsOn?: string[]; // Array of task IDs that this task depends on
   tags?: string[]; // Array of tag strings
   order?: number; // Order for drag & drop sorting
+  progress?: number; // Progress percentage (0-100) calculated from subtasks
 }
 
 export interface Snippet {

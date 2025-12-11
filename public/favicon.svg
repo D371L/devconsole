@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Background -->
+  <rect width="64" height="64" fill="#050505"/>
+  
+  <!-- Terminal frame -->
+  <rect x="8" y="12" width="48" height="40" fill="none" stroke="#00f3ff" stroke-width="2" rx="2"/>
+  
+  <!-- Terminal prompt -->
+  <text x="12" y="32" font-family="monospace" font-size="12" fill="#00f3ff">$</text>
+  
+  <!-- Terminal cursor -->
+  <rect x="20" y="28" width="6" height="8" fill="#00f3ff" opacity="0.8">
+    <animate attributeName="opacity" values="0.8;0.2;0.8" dur="1s" repeatCount="indefinite"/>
+  </rect>
+  
+  <!-- Glow effect -->
+  <rect x="8" y="12" width="48" height="40" fill="none" stroke="#00f3ff" stroke-width="1" rx="2" opacity="0.3">
+    <animate attributeName="opacity" values="0.3;0.6;0.3" dur="2s" repeatCount="indefinite"/>
+  </rect>
+</svg>
+

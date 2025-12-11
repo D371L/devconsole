@@ -28,6 +28,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const [mem, setMem] = useState(0);
   const [temp, setTemp] = useState(42); 
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     // Initial random value for effect
@@ -61,13 +62,16 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
   const levelInfo = currentUser ? getLevelInfo(currentUser.xp) : null;
 
-  const NavItem = ({ to, label, exact = false }: { to: string, label: string, exact?: boolean }) => {
+  const NavItem = ({ to, label, exact = false, onClick }: { to: string, label: string, exact?: boolean, onClick?: () => void }) => {
     const isActive = exact ? location.pathname === to : location.pathname.startsWith(to);
     return (
       <Link 
         to={to} 
         onMouseEnter={() => SoundService.playHover()}
-        onClick={() => SoundService.playClick()}
+        onClick={() => {
+          SoundService.playClick();
+          if (onClick) onClick();
+        }}
         className={`block py-2 px-3 mb-2 text-sm font-medium rounded-md transition-all duration-200 flex items-center group ${
           isActive 
             ? 'bg-blue-50 text-blue-700 dark:bg-gray-900 dark:text-neon-main dark:border-l-2 dark:border-neon-main dark:rounded-none' 
@@ -229,18 +233,99 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           digitalRainMode ? 'bg-gray-50/80 dark:bg-black/60' : 'bg-gray-50 dark:bg-black'
       }`}>
         {/* Mobile Header */}
-        <div className={`md:hidden flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-800 shadow-sm ${
+        <div className={`md:hidden flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-800 shadow-sm z-30 ${
              digitalRainMode ? 'bg-white/90 dark:bg-black/80' : 'bg-white dark:bg-black'
         }`}>
-             <div className="text-gray-900 dark:text-white font-bold dark:neon-text-main">DevConsole</div>
+             <div className="flex items-center gap-3">
+                <button
+                    onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                    className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        {mobileMenuOpen ? (
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                        ) : (
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+                        )}
+                    </svg>
+                </button>
+                <div className="text-gray-900 dark:text-white font-bold dark:neon-text-main">DevConsole</div>
+             </div>
              <div className="flex gap-4 text-xs font-medium">
                 <button onClick={toggleTheme} className="text-gray-600 dark:text-gray-400">
                     {theme === 'light' ? '☀' : '☾'}
                 </button>
-                <Link to="/dashboard" className="text-blue-600 dark:text-neon-main">Home</Link>
                 <button onClick={logout} className="text-red-500">Exit</button>
              </div>
         </div>
+
+        {/* Mobile Sidebar Overlay */}
+        {mobileMenuOpen && (
+            <>
+                <div 
+                    className="fixed inset-0 bg-black/50 z-40 md:hidden"
+                    onClick={() => setMobileMenuOpen(false)}
+                />
+                <aside className={`fixed top-0 left-0 h-full w-64 z-50 flex flex-col p-6 border-r border-gray-200 dark:border-gray-900 shadow-lg transition-transform duration-300 md:hidden ${
+                    digitalRainMode ? 'bg-white/95 dark:bg-black/95 backdrop-blur-sm' : 'bg-white dark:bg-black'
+                } ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                    <div className="mb-8">
+                        <div className="text-lg font-bold text-gray-900 dark:text-white tracking-tight flex items-center gap-2 dark:neon-text-main">
+                            <div className="w-3 h-3 bg-blue-600 dark:bg-neon-main rounded-full dark:shadow-[0_0_10px_var(--neon-primary)]"></div>
+                            DevConsole<span className="text-gray-400 font-normal dark:text-gray-600">_v2</span>
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1 pl-5 font-mono">
+                            SYS.STATUS <span className="uppercase text-green-500">ONLINE</span>
+                        </div>
+                    </div>
+
+                    {/* User Stats */}
+                    {currentUser && levelInfo && (
+                        <div className="mb-6 p-4 bg-gray-100 dark:bg-gray-900/50 rounded-lg dark:rounded-none border border-gray-200 dark:border-gray-800">
+                            <div className="flex justify-between items-end mb-1">
+                                <span className="text-xs font-bold text-gray-500 dark:text-gray-400">LVL {levelInfo.level}</span>
+                                <span className="text-[10px] text-gray-400 font-mono">{Math.floor(currentUser.xp)} XP</span>
+                            </div>
+                            <div className="w-full bg-gray-300 dark:bg-gray-700 h-1.5 rounded-full dark:rounded-none overflow-hidden mb-2">
+                                <div 
+                                    className="bg-blue-600 dark:bg-neon-main h-full transition-all duration-500" 
+                                    style={{ width: `${levelInfo.progress}%` }}
+                                ></div>
+                            </div>
+                            <div className="text-[10px] uppercase font-bold text-center text-blue-700 dark:text-neon-main tracking-wider truncate">
+                                {levelInfo.title}
+                            </div>
+                        </div>
+                    )}
+
+                    <nav className="flex-1 overflow-y-auto">
+                        <NavItem to="/dashboard" label="Dashboard" onClick={() => setMobileMenuOpen(false)} />
+                        <NavItem to="/calendar" label="Calendar" onClick={() => setMobileMenuOpen(false)} />
+                        {currentUser?.role !== Role.VIEWER && (
+                            <NavItem to="/create-task" label="New Task" onClick={() => setMobileMenuOpen(false)} />
+                        )}
+                        <NavItem to="/terminal" label="AI Terminal" onClick={() => setMobileMenuOpen(false)} />
+                        <NavItem to="/snippets" label="Code Vault" onClick={() => setMobileMenuOpen(false)} />
+                        <NavItem to="/logs" label="System Logs" onClick={() => setMobileMenuOpen(false)} />
+                        <NavItem to="/leaderboard" label="Hall of Fame" onClick={() => setMobileMenuOpen(false)} />
+                        {currentUser?.role === Role.ADMIN && (
+                            <NavItem to="/admin" label="Admin Panel" onClick={() => setMobileMenuOpen(false)} />
+                        )}
+                    </nav>
+
+                    {/* Mobile User Info */}
+                    <div className="mt-auto pt-6 border-t border-gray-200 dark:border-gray-800">
+                        <div className="flex items-center gap-3 mb-4 p-2">
+                            <img src={currentUser?.avatar} alt="Avatar" className="w-8 h-8 rounded-full dark:rounded-none border border-gray-200 dark:border-neon-main" />
+                            <div className="overflow-hidden">
+                                <div className="text-sm text-gray-900 dark:text-neon-main font-medium truncate">{currentUser?.username}</div>
+                                <div className="text-[10px] text-gray-500 dark:text-gray-600 uppercase">{currentUser?.role}</div>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
+            </>
+        )}
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth z-10">

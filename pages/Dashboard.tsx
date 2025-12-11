@@ -6,6 +6,7 @@ import { StatusBadge, PriorityBadge } from '../components/TerminalUI';
 import { KanbanBoard, TaskStatsChart, MetricsWidgets } from '../components/DashboardWidgets';
 import { GraphView } from '../components/GraphView';
 import { TaskStatus, Role, Priority, Task } from '../types';
+import { exportToCSV, exportToJSON, exportToPDF } from '../services/exportService';
 
 type SortField = 'id' | 'title' | 'deadline' | 'completedAt' | 'priority' | 'createdAt' | 'status';
 type SortOrder = 'asc' | 'desc';
@@ -332,34 +333,36 @@ export const Dashboard: React.FC = () => {
 
             {/* View Toggle and Export */}
             <div className="flex items-center gap-2">
-                <button
-                    onClick={() => {
-                        const csv = filteredTasks.map(t => ({
-                            ID: t.id,
-                            Title: t.title,
-                            Description: t.description,
-                            Project: getProjectName(t.projectId),
-                            Status: t.status,
-                            Priority: t.priority,
-                            Agent: getUserName(t.assignedTo || ''),
-                            Deadline: t.deadline ? new Date(t.deadline).toLocaleDateString() : '',
-                            Completed: t.completedAt ? new Date(t.completedAt).toLocaleDateString() : '',
-                            TimeSpent: Math.floor((t.timeSpent || 0) / 3600) + 'h ' + Math.floor(((t.timeSpent || 0) % 3600) / 60) + 'm'
-                        }));
-                        const headers = Object.keys(csv[0] || {});
-                        const rows = csv.map(row => headers.map(h => `"${String(row[h as keyof typeof row] || '').replace(/"/g, '""')}"`).join(','));
-                        const csvContent = [headers.join(','), ...rows].join('\n');
-                        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                        const link = document.createElement('a');
-                        link.href = URL.createObjectURL(blob);
-                        link.download = `tasks_${new Date().toISOString().split('T')[0]}.csv`;
-                        link.click();
-                    }}
-                    disabled={filteredTasks.length === 0}
-                    className="px-3 py-1.5 text-xs font-medium border border-gray-200 dark:border-gray-700 rounded-md dark:rounded-none bg-white dark:bg-black text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    EXPORT CSV
-                </button>
+                <div className="relative group">
+                    <button
+                        disabled={filteredTasks.length === 0}
+                        className="px-3 py-1.5 text-xs font-medium border border-gray-200 dark:border-gray-700 rounded-md dark:rounded-none bg-white dark:bg-black text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        EXPORT ▼
+                    </button>
+                    {filteredTasks.length > 0 && (
+                        <div className="absolute right-0 top-full mt-1 w-32 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md dark:rounded-none shadow-lg z-10 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+                            <button
+                                onClick={() => exportToCSV(filteredTasks, getProjectName, getUserName)}
+                                className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
+                            >
+                                CSV
+                            </button>
+                            <button
+                                onClick={() => exportToJSON(filteredTasks)}
+                                className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
+                            >
+                                JSON
+                            </button>
+                            <button
+                                onClick={() => exportToPDF(filteredTasks, getProjectName, getUserName)}
+                                className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
+                            >
+                                PDF
+                            </button>
+                        </div>
+                    )}
+                </div>
                 <div className="flex rounded-md dark:rounded-none shadow-sm" role="group">
                     <button
                         type="button"
@@ -400,8 +403,50 @@ export const Dashboard: React.FC = () => {
 
         {/* Content View */}
         {viewMode === 'TABLE' && (
-            <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800 table-fixed">
+            <>
+                {/* Mobile Card View */}
+                <div className="md:hidden space-y-4">
+                    {paginatedTasks.length === 0 ? (
+                        <div className="text-center py-12 text-gray-500 text-sm font-mono uppercase tracking-widest">
+                            Void // No directives found
+                        </div>
+                    ) : (
+                        paginatedTasks.map((task) => (
+                            <Link
+                                key={task.id}
+                                to={`/task/${task.id}`}
+                                className="block bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg dark:rounded-none p-4 hover:shadow-md transition-shadow"
+                            >
+                                <div className="flex justify-between items-start mb-2">
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="text-xs font-mono text-gray-400">{task.id.substring(0, 6)}</span>
+                                            <StatusBadge status={task.status} />
+                                            <PriorityBadge priority={task.priority} />
+                                        </div>
+                                        <h3 className="text-sm font-bold text-gray-900 dark:text-white truncate">{task.title}</h3>
+                                        {task.description && (
+                                            <p className="text-xs text-gray-500 dark:text-gray-600 mt-1 line-clamp-2">{task.description}</p>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="flex flex-wrap gap-2 mt-3 text-xs text-gray-500 dark:text-gray-600">
+                                    <span className="font-mono">{getProjectName(task.projectId)}</span>
+                                    {task.assignedTo && (
+                                        <span>• {getUserName(task.assignedTo)}</span>
+                                    )}
+                                    {task.deadline && (
+                                        <span>• {new Date(task.deadline).toLocaleDateString()}</span>
+                                    )}
+                                </div>
+                            </Link>
+                        ))
+                    )}
+                </div>
+
+                {/* Desktop Table View */}
+                <div className="hidden md:block overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800 table-fixed">
                     <thead className="bg-gray-50 dark:bg-black">
                         <tr>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-600 uppercase tracking-wider font-mono w-24">
@@ -561,7 +606,8 @@ export const Dashboard: React.FC = () => {
                         )}
                     </tbody>
                 </table>
-            </div>
+                </div>
+            </>
         )}
         
         {viewMode === 'BOARD' && (

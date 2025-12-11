@@ -6,6 +6,8 @@ import { TerminalButton, TerminalCard, TerminalInput, TerminalTextArea } from '.
 import { Task, TaskStatus, Priority, Subtask, Role, Project } from '../types';
 import { analyzeTaskAndGetSubtasks, generateAsciiArt } from '../services/geminiService';
 import { SoundService } from '../services/soundService';
+import { useDebounce } from '../hooks/useDebounce';
+import { apiService } from '../services/apiService';
 
 const formatTime = (totalSeconds: number) => {
     const hours = Math.floor(totalSeconds / 3600);
@@ -17,7 +19,7 @@ const formatTime = (totalSeconds: number) => {
 export const TaskDetail: React.FC<{ isNew?: boolean }> = ({ isNew }) => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { tasks, users, projects, currentUser, addTask, updateTask, deleteTask, addProject, addComment, showNotification, toggleTaskTimer } = useApp();
+  const { tasks, users, projects, currentUser, addTask, updateTask, deleteTask, addProject, addComment, editComment, deleteComment, addReaction, showNotification, toggleTaskTimer } = useApp();
 
   const isViewer = currentUser?.role === Role.VIEWER;
 
@@ -40,10 +42,16 @@ export const TaskDetail: React.FC<{ isNew?: boolean }> = ({ isNew }) => {
   });
 
   const [newComment, setNewComment] = useState('');
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingCommentText, setEditingCommentText] = useState('');
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [newTag, setNewTag] = useState('');
   const [selectedDependency, setSelectedDependency] = useState<string>('');
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+
+  // Debounced form data for auto-save
+  const debouncedFormData = useDebounce(formData, 2500); // 2.5 seconds delay
 
   // Project Creation State
   const [isCreatingProject, setIsCreatingProject] = useState(false);
@@ -183,6 +191,48 @@ export const TaskDetail: React.FC<{ isNew?: boolean }> = ({ isNew }) => {
       };
   }, [formData.timerStartedAt, formData.timeSpent, id, isViewer, tasks, updateTask, formData.id]);
   
+  // Auto-save when form data changes (debounced)
+  useEffect(() => {
+    // Skip auto-save if:
+    // - New task (not saved yet)
+    // - Viewer role
+    // - No task ID
+    // - Form data hasn't changed from initial load
+    if (isNew || isViewer || !id || !debouncedFormData.id || debouncedFormData.id !== id) {
+      return;
+    }
+
+    // Check if there are actual changes to save
+    const currentTask = tasks.find(t => t.id === id);
+    if (!currentTask) return;
+
+    // Compare key fields to avoid unnecessary saves
+    const hasChanges = 
+      currentTask.title !== debouncedFormData.title ||
+      currentTask.description !== debouncedFormData.description ||
+      currentTask.status !== debouncedFormData.status ||
+      currentTask.priority !== debouncedFormData.priority ||
+      currentTask.assignedTo !== debouncedFormData.assignedTo ||
+      currentTask.projectId !== debouncedFormData.projectId ||
+      currentTask.deadline !== debouncedFormData.deadline ||
+      JSON.stringify(currentTask.dependsOn || []) !== JSON.stringify(debouncedFormData.dependsOn || []) ||
+      JSON.stringify(currentTask.tags || []) !== JSON.stringify(debouncedFormData.tags || []);
+
+    if (hasChanges) {
+      setSaveStatus('saving');
+      updateTask({ ...debouncedFormData, projectId: debouncedFormData.projectId || currentTask.projectId } as Task)
+        .then(() => {
+          setSaveStatus('saved');
+          setTimeout(() => setSaveStatus('idle'), 2000); // Reset status after 2 seconds
+        })
+        .catch((error) => {
+          console.error('Auto-save failed:', error);
+          setSaveStatus('error');
+          setTimeout(() => setSaveStatus('idle'), 3000);
+        });
+    }
+  }, [debouncedFormData, id, isNew, isViewer, tasks, updateTask]);
+  
   // Сохраняем время при уходе со страницы
   useEffect(() => {
       const handleBeforeUnload = async () => {
@@ -264,32 +314,104 @@ export const TaskDetail: React.FC<{ isNew?: boolean }> = ({ isNew }) => {
       }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (isViewer) return;
     const file = e.target.files?.[0];
-    if (file) {
+    if (!file) return;
+
+    // Check file size (10MB limit)
+    if (file.size > 10 * 1024 * 1024) {
+      showNotification('File too large. Maximum size is 10MB.', 'error');
+      e.target.value = '';
+      return;
+    }
+
+    // For images, use annotation modal with base64 for annotation
+    if (file.type.startsWith('image/')) {
       const reader = new FileReader();
       reader.onloadend = () => {
         const base64 = reader.result as string;
-        // Instead of adding directly, open annotation modal
         setPendingAnnotationImage(base64);
       };
       reader.readAsDataURL(file);
+    } else {
+      // For non-images, upload directly to server
+      try {
+        showNotification('Uploading file...', 'info');
+        const fileInfo = await apiService.uploadFile(file);
+        // Use the filename directly, store it as /uploads/filename format for consistency
+        const fileUrl = `/uploads/${fileInfo.filename}`;
+        
+        // Update formData with new attachment
+        const updatedAttachments = [...(formData.attachments || []), fileUrl];
+        setFormData(prev => ({
+          ...prev,
+          attachments: updatedAttachments
+        }));
+        
+        // Auto-save the task after file upload with updated attachments
+        if (!isNew && id) {
+          try {
+            await updateTask({ ...formData, attachments: updatedAttachments } as Task);
+          } catch (error) {
+            console.error('Failed to auto-save after file upload:', error);
+          }
+        }
+        
+        showNotification('File uploaded successfully', 'success');
+      } catch (error) {
+        console.error('Failed to upload file:', error);
+        showNotification('Failed to upload file: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error');
+      }
     }
+    
     // Reset input
     e.target.value = '';
   };
 
-  const saveAnnotation = () => {
+  const saveAnnotation = async () => {
       if (isViewer) return;
-      if (canvasRef.current) {
-          const annotatedImage = canvasRef.current.toDataURL('image/png');
-          setFormData(prev => ({
-            ...prev,
-            attachments: [...(prev.attachments || []), annotatedImage]
-          }));
-          setPendingAnnotationImage(null);
-          SoundService.playSuccess();
+      if (canvasRef.current && pendingAnnotationImage) {
+          try {
+              // Convert canvas to blob and upload
+              canvasRef.current.toBlob(async (blob) => {
+                  if (!blob) {
+                      showNotification('Failed to process image', 'error');
+                      return;
+                  }
+
+                  // Create a File object from blob
+                  const file = new File([blob], `annotated_${Date.now()}.png`, { type: 'image/png' });
+                  
+                  showNotification('Uploading annotated image...', 'info');
+                  const fileInfo = await apiService.uploadFile(file);
+                  // Use the filename directly, store it as /uploads/filename format for consistency
+                  const fileUrl = `/uploads/${fileInfo.filename}`;
+                  
+                  // Update formData with new attachment
+                  const updatedAttachments = [...(formData.attachments || []), fileUrl];
+                  setFormData(prev => ({
+                      ...prev,
+                      attachments: updatedAttachments
+                  }));
+                  
+                  // Auto-save the task after image upload with updated attachments
+                  if (!isNew && id) {
+                    try {
+                      await updateTask({ ...formData, attachments: updatedAttachments } as Task);
+                    } catch (error) {
+                      console.error('Failed to auto-save after image upload:', error);
+                    }
+                  }
+                  
+                  setPendingAnnotationImage(null);
+                  SoundService.playSuccess();
+                  showNotification('Image uploaded successfully', 'success');
+              }, 'image/png');
+          } catch (error) {
+              console.error('Failed to upload annotated image:', error);
+              showNotification('Failed to upload image: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error');
+          }
       }
   };
 
@@ -337,61 +459,97 @@ export const TaskDetail: React.FC<{ isNew?: boolean }> = ({ isNew }) => {
   };
 
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (isViewer) return;
-    if (!formData.title || !formData.description) return;
+    setError(null);
+    
+    if (!formData.title || !formData.description) {
+      const errorMsg = 'Title and description are required';
+      setError(errorMsg);
+      showNotification(errorMsg, 'error');
+      return;
+    }
+    
     SoundService.playClick();
+    setSaveStatus('saving');
 
-    let finalProjectId = formData.projectId;
+    try {
+      let finalProjectId = formData.projectId;
 
-    // Logic to create new project if needed
-    if (isCreatingProject && newProjectName) {
-        const newProject: Project = {
-            id: `p${Date.now()}`,
-            name: newProjectName,
-            color: '#'+Math.floor(Math.random()*16777215).toString(16) // Random color
+      // Logic to create new project if needed
+      if (isCreatingProject && newProjectName) {
+          const newProject: Project = {
+              id: `p${Date.now()}`,
+              name: newProjectName,
+              color: '#'+Math.floor(Math.random()*16777215).toString(16) // Random color
+          };
+          await addProject(newProject);
+          finalProjectId = newProject.id;
+      }
+
+      if (!finalProjectId) {
+          const errorMsg = "Project assignment required.";
+          setError(errorMsg);
+          setSaveStatus('error');
+          showNotification(errorMsg, "error");
+          setTimeout(() => setSaveStatus('idle'), 3000);
+          return;
+      }
+
+      if (isNew) {
+        const newTask: Task = {
+          id: `t${Date.now()}`,
+          title: formData.title!,
+          description: formData.description!,
+          projectId: finalProjectId,
+          status: formData.status || TaskStatus.TODO,
+          priority: formData.priority || Priority.MEDIUM,
+          assignedTo: formData.assignedTo,
+          createdBy: currentUser!.id,
+          createdAt: Date.now(),
+          deadline: formData.deadline,
+          attachments: formData.attachments || [],
+          subtasks: formData.subtasks || [],
+          comments: [],
+          activityLog: [],
+          timeSpent: 0,
+          timerStartedAt: null
         };
-        addProject(newProject);
-        finalProjectId = newProject.id;
+        await addTask(newTask);
+        setSaveStatus('saved');
+        setTimeout(() => navigate('/dashboard'), 500);
+      } else {
+        await updateTask({ ...formData, projectId: finalProjectId } as Task);
+        setSaveStatus('saved');
+        setTimeout(() => setSaveStatus('idle'), 2000);
+      }
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to save task';
+      setError(errorMsg);
+      setSaveStatus('error');
+      showNotification(errorMsg, 'error');
+      setTimeout(() => setSaveStatus('idle'), 3000);
     }
-
-    if (!finalProjectId) {
-        showNotification("Project assignment required.", "error");
-        return;
-    }
-
-    if (isNew) {
-      const newTask: Task = {
-        id: `t${Date.now()}`,
-        title: formData.title!,
-        description: formData.description!,
-        projectId: finalProjectId,
-        status: formData.status || TaskStatus.TODO,
-        priority: formData.priority || Priority.MEDIUM,
-        assignedTo: formData.assignedTo,
-        createdBy: currentUser!.id,
-        createdAt: Date.now(),
-        deadline: formData.deadline,
-        attachments: formData.attachments || [],
-        subtasks: formData.subtasks || [],
-        comments: [],
-        activityLog: [],
-        timeSpent: 0,
-        timerStartedAt: null
-      };
-      addTask(newTask);
-    } else {
-      updateTask({ ...formData, projectId: finalProjectId } as Task);
-    }
-    navigate('/dashboard');
   };
 
-  const handleDelete = () => {
-    if (isViewer) return;
+  const handleDelete = async () => {
+    if (isViewer || !id) return;
+    
+    if (!window.confirm('Are you sure you want to delete this task? This action cannot be undone.')) {
+      return;
+    }
+    
     SoundService.playClick();
-    if (id && window.confirm('Are you sure you want to delete this task?')) {
-      deleteTask(id);
+    setError(null);
+    
+    try {
+      await deleteTask(id);
+      showNotification('Task deleted successfully', 'success');
       navigate('/dashboard');
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to delete task';
+      setError(errorMsg);
+      showNotification(errorMsg, 'error');
     }
   };
 
@@ -570,17 +728,30 @@ export const TaskDetail: React.FC<{ isNew?: boolean }> = ({ isNew }) => {
                 {isNew ? 'NEW_DIRECTIVE' : `ID: ${id}`}
             </h2>
         </div>
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-3 items-center">
              {!isNew && !isViewer && (
                 <TerminalButton variant="danger" onClick={handleDelete}>PURGE</TerminalButton>
              )}
              {!isViewer && (
-                 <TerminalButton variant="primary" onClick={handleSave}>EXECUTE SAVE</TerminalButton>
+                 <>
+                   <TerminalButton variant="primary" onClick={handleSave}>EXECUTE SAVE</TerminalButton>
+                  {!isNew && saveStatus !== 'idle' && (
+                    <span className={`text-xs font-mono px-2 py-1 rounded dark:rounded-none ${
+                      saveStatus === 'saving' 
+                        ? 'text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/30'
+                        : saveStatus === 'error'
+                        ? 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30'
+                        : 'text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30'
+                    }`}>
+                      {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'error' ? 'Error!' : '✓ Saved'}
+                    </span>
+                  )}
+                 </>
              )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8">
         {/* Main Column */}
         <div className="lg:col-span-2 space-y-6">
           <TerminalCard title="CORE_DATA" neonColor="cyan">
@@ -683,6 +854,30 @@ export const TaskDetail: React.FC<{ isNew?: boolean }> = ({ isNew }) => {
                   )}
               </div>
 
+              {/* Progress Bar */}
+              {formData.subtasks && formData.subtasks.length > 0 && (() => {
+                const completed = formData.subtasks.filter(st => st.completed).length;
+                const total = formData.subtasks.length;
+                const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+                return (
+                  <div className="mb-4">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">Progress</span>
+                      <span className="text-xs font-bold text-purple-600 dark:text-neon-purple">{progress}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 dark:bg-gray-800 rounded-full h-2">
+                      <div
+                        className="bg-purple-600 dark:bg-neon-purple h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-600 mt-1">
+                      {completed} of {total} steps completed
+                    </div>
+                  </div>
+                );
+              })()}
+
               <div className="space-y-3 mb-4">
                   {formData.subtasks?.map(st => (
                       <div key={st.id} className="flex items-center gap-3 bg-gray-50 dark:bg-gray-900/30 p-2 rounded dark:rounded-none group animate-fade-in">
@@ -729,34 +924,99 @@ export const TaskDetail: React.FC<{ isNew?: boolean }> = ({ isNew }) => {
                     <div className="flex flex-col items-center justify-center pt-5 pb-6">
                         <p className="text-sm text-gray-500 dark:text-gray-600 font-mono uppercase">Upload Assets (Annotate)</p>
                     </div>
-                    <input type="file" className="hidden" accept="image/*" onChange={handleFileUpload} />
+                    <input type="file" className="hidden" onChange={handleFileUpload} />
                 </label>
                 </div>
             )}
             
             {formData.attachments && formData.attachments.length > 0 && (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {formData.attachments.map((img, idx) => (
-                    <div key={idx} className="relative group rounded-md dark:rounded-none overflow-hidden border border-gray-200 dark:border-gray-800 shadow-sm">
-                    <img 
-                        src={img} 
-                        alt={`Asset ${idx}`} 
-                        className="w-full h-24 object-cover hover:scale-105 transition-transform duration-300 opacity-80 group-hover:opacity-100 cursor-zoom-in" 
-                        onClick={() => setLightboxImage(img)}
-                    />
-                    {!isViewer && (
-                        <button 
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                handleChange('attachments', formData.attachments?.filter((_, i) => i !== idx))
-                            }}
-                            className="absolute top-1 right-1 bg-white/90 dark:bg-red-900 text-red-600 dark:text-white rounded-full dark:rounded-none p-1 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                        </button>
-                    )}
-                    </div>
-                ))}
+                {formData.attachments.map((attachment, idx) => {
+                    // Support both base64 (old) and URL (new) formats
+                    const isImage = attachment.startsWith('data:image/') || attachment.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+                    // Convert attachment to proper URL
+                    let attachmentUrl = attachment;
+                    if (attachment.startsWith('/uploads/')) {
+                        // Extract filename from /uploads/filename
+                        const filename = attachment.replace('/uploads/', '');
+                        attachmentUrl = apiService.getFileUrl(filename);
+                        console.log('Attachment:', attachment, '-> URL:', attachmentUrl);
+                    } else if (!attachment.startsWith('http') && !attachment.startsWith('data:image/')) {
+                        // If it's just a filename without path, assume it's in uploads
+                        attachmentUrl = apiService.getFileUrl(attachment);
+                        console.log('Attachment (filename only):', attachment, '-> URL:', attachmentUrl);
+                    }
+                    
+                    const handleDelete = async (e: React.MouseEvent) => {
+                        e.stopPropagation();
+                        // If it's a server file (URL), delete from server
+                        if (attachment.startsWith('/uploads/') || (attachment.startsWith('http') && attachment.includes('/uploads/'))) {
+                            try {
+                                const filename = attachment.includes('/uploads/') 
+                                    ? attachment.split('/uploads/')[1] 
+                                    : attachment.split('/').pop();
+                                if (filename) {
+                                    await apiService.deleteFile(filename);
+                                }
+                            } catch (error) {
+                                console.error('Failed to delete file from server:', error);
+                                // Continue with local deletion even if server deletion fails
+                            }
+                        }
+                        // Remove from attachments list
+                        handleChange('attachments', formData.attachments?.filter((_, i) => i !== idx));
+                    };
+
+                    if (isImage) {
+                        return (
+                            <div key={idx} className="relative group rounded-md dark:rounded-none overflow-hidden border border-gray-200 dark:border-gray-800 shadow-sm">
+                                <img 
+                                    src={attachmentUrl} 
+                                    alt={`Asset ${idx}`} 
+                                    className="w-full h-24 object-cover hover:scale-105 transition-transform duration-300 opacity-80 group-hover:opacity-100 cursor-zoom-in" 
+                                    onClick={() => setLightboxImage(attachmentUrl)}
+                                    onError={(e) => {
+                                        // Fallback for broken images
+                                        (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect fill="%23ccc" width="100" height="100"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%23999">Image</text></svg>';
+                                    }}
+                                />
+                                {!isViewer && (
+                                    <button 
+                                        onClick={handleDelete}
+                                        className="absolute top-1 right-1 bg-white/90 dark:bg-red-900 text-red-600 dark:text-white rounded-full dark:rounded-none p-1 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                    </button>
+                                )}
+                            </div>
+                        );
+                    } else {
+                        // Non-image file
+                        const fileName = attachment.includes('/uploads/') 
+                            ? attachment.split('/uploads/')[1] 
+                            : attachment.split('/').pop() || `File ${idx + 1}`;
+                        return (
+                            <div key={idx} className="relative group rounded-md dark:rounded-none overflow-hidden border border-gray-200 dark:border-gray-800 shadow-sm p-3 bg-gray-50 dark:bg-gray-900">
+                                <a 
+                                    href={attachmentUrl} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="block text-xs text-gray-700 dark:text-gray-300 truncate hover:text-blue-600 dark:hover:text-neon-cyan"
+                                >
+                                    📎 {fileName.substring(0, 20)}
+                                </a>
+                                {!isViewer && (
+                                    <button 
+                                        onClick={handleDelete}
+                                        className="absolute top-1 right-1 bg-white/90 dark:bg-red-900 text-red-600 dark:text-white rounded-full dark:rounded-none p-1 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                    </button>
+                                )}
+                            </div>
+                        );
+                    }
+                })}
                 </div>
             )}
             {(!formData.attachments || formData.attachments.length === 0) && isViewer && (
@@ -771,15 +1031,145 @@ export const TaskDetail: React.FC<{ isNew?: boolean }> = ({ isNew }) => {
             <TerminalCard title="COMMUNICATIONS_LOG" neonColor="purple">
                 <div className="max-h-64 overflow-y-auto mb-4 space-y-4 pr-2 custom-scrollbar">
                     {formData.comments && formData.comments.length > 0 ? (
-                        formData.comments.map((comment) => (
-                            <div key={comment.id} className="bg-gray-50 dark:bg-gray-900/30 p-3 rounded dark:rounded-none border-l-2 border-blue-400 dark:border-neon-cyan">
-                                <div className="flex justify-between items-center mb-1">
-                                    <span className="text-xs font-bold text-gray-700 dark:text-gray-300">{getUserName(comment.userId)}</span>
-                                    <span className="text-[10px] text-gray-400 font-mono">{new Date(comment.timestamp).toLocaleTimeString()}</span>
+                        formData.comments.map((comment) => {
+                            const isOwnComment = comment.userId === currentUser?.id;
+                            const isEditing = editingCommentId === comment.id;
+                            
+                            // Parse mentions in comment text
+                            const renderCommentText = (text: string) => {
+                                const parts = text.split(/(@\w+)/g);
+                                return parts.map((part, idx) => {
+                                    if (part.startsWith('@')) {
+                                        const username = part.substring(1);
+                                        const user = users.find(u => u.username.toLowerCase() === username.toLowerCase());
+                                        return user ? (
+                                            <span key={idx} className="text-blue-600 dark:text-neon-cyan font-semibold">{part}</span>
+                                        ) : (
+                                            <span key={idx}>{part}</span>
+                                        );
+                                    }
+                                    return <span key={idx}>{part}</span>;
+                                });
+                            };
+                            
+                            return (
+                                <div key={comment.id} className="group bg-gray-50 dark:bg-gray-900/30 p-3 rounded dark:rounded-none border-l-2 border-blue-400 dark:border-neon-cyan">
+                                    <div className="flex justify-between items-start mb-1">
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs font-bold text-gray-700 dark:text-gray-300">{getUserName(comment.userId)}</span>
+                                                {comment.edited && (
+                                                    <span className="text-[9px] text-gray-400 italic">(edited)</span>
+                                                )}
+                                            </div>
+                                            <span className="text-[10px] text-gray-400 font-mono">{new Date(comment.timestamp).toLocaleTimeString()}</span>
+                                        </div>
+                                        {isOwnComment && !isEditing && !isViewer && (
+                                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button
+                                                    onClick={() => {
+                                                        setEditingCommentId(comment.id);
+                                                        setEditingCommentText(comment.text);
+                                                    }}
+                                                    className="text-xs text-gray-500 hover:text-blue-600 dark:hover:text-neon-cyan"
+                                                    title="Edit comment"
+                                                >
+                                                    ✏️
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        if (id) deleteComment(id, comment.id);
+                                                    }}
+                                                    className="text-xs text-gray-500 hover:text-red-600"
+                                                    title="Delete comment"
+                                                >
+                                                    🗑️
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                    
+                                    {isEditing ? (
+                                        <div className="space-y-2">
+                                            <TerminalTextArea
+                                                value={editingCommentText}
+                                                onChange={e => setEditingCommentText(e.target.value)}
+                                                rows={3}
+                                                className="text-xs"
+                                            />
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => {
+                                                        if (id) {
+                                                            editComment(id, comment.id, editingCommentText);
+                                                            setEditingCommentId(null);
+                                                            setEditingCommentText('');
+                                                        }
+                                                    }}
+                                                    className="px-2 py-1 bg-green-600 text-white text-xs font-bold hover:bg-green-700"
+                                                >
+                                                    Save
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        setEditingCommentId(null);
+                                                        setEditingCommentText('');
+                                                    }}
+                                                    className="px-2 py-1 bg-gray-600 text-white text-xs font-bold hover:bg-gray-700"
+                                                >
+                                                    Cancel
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{renderCommentText(comment.text)}</p>
+                                            
+                                            {/* Reactions - показать при наведении */}
+                                            <div className="flex items-center gap-2 flex-wrap opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                                {Object.entries(comment.reactions || {}).length > 0 && (
+                                                    <>
+                                                        {Object.entries(comment.reactions || {}).map(([emoji, userIds]) => (
+                                                            <button
+                                                                key={emoji}
+                                                                onClick={() => {
+                                                                    if (id && !isViewer) addReaction(id, comment.id, emoji);
+                                                                }}
+                                                                disabled={isViewer}
+                                                                className={`text-xs px-2 py-0.5 rounded dark:rounded-none border ${
+                                                                    (userIds as string[]).includes(currentUser?.id || '')
+                                                                        ? 'bg-blue-100 dark:bg-blue-900/30 border-blue-400 dark:border-blue-600'
+                                                                        : 'bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-700'
+                                                                }`}
+                                                                title={`${(userIds as string[]).map(id => getUserName(id)).join(', ')}`}
+                                                            >
+                                                                {emoji} {(userIds as string[]).length}
+                                                            </button>
+                                                        ))}
+                                                    </>
+                                                )}
+                                                {!isViewer && (
+                                                    <div className="flex gap-1">
+                                                        {['👍', '❤️', '😄', '🎉'].map(emoji => (
+                                                            <button
+                                                                key={emoji}
+                                                                onClick={() => {
+                                                                    if (id) addReaction(id, comment.id, emoji);
+                                                                }}
+                                                                className="text-xs hover:scale-125 transition-transform"
+                                                                title={`React with ${emoji}`}
+                                                            >
+                                                                {emoji}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
-                                <p className="text-sm text-gray-600 dark:text-gray-400">{comment.text}</p>
-                            </div>
-                        ))
+                            );
+                        })
                     ) : (
                         <p className="text-xs text-gray-400 italic">No communications recorded.</p>
                     )}
@@ -789,7 +1179,7 @@ export const TaskDetail: React.FC<{ isNew?: boolean }> = ({ isNew }) => {
                         <TerminalInput 
                             value={newComment} 
                             onChange={e => setNewComment(e.target.value)} 
-                            placeholder="Enter logs..." 
+                            placeholder="Enter logs... (use @username to mention)" 
                             className="text-xs"
                         />
                         <button type="submit" className="px-3 py-1 bg-blue-600 text-white text-xs font-bold uppercase hover:bg-blue-700 dark:bg-transparent dark:border dark:border-blue-500 dark:text-blue-500 dark:hover:bg-blue-900/20">
@@ -886,13 +1276,33 @@ export const TaskDetail: React.FC<{ isNew?: boolean }> = ({ isNew }) => {
 
           {!isNew && (
             <TerminalCard title="SYSTEM_ACTIVITY" neonColor="green">
-                <div className="max-h-80 overflow-y-auto space-y-2 pr-2 custom-scrollbar font-mono text-xs">
+                <div className="max-h-80 overflow-y-auto space-y-3 pr-2 custom-scrollbar font-mono text-xs">
                     {Array.isArray(formData.activityLog) && formData.activityLog.length > 0 ? (
                         formData.activityLog.slice().reverse().map((log) => (
-                            <div key={log.id} className="flex gap-2 text-gray-600 dark:text-gray-500 border-b border-gray-100 dark:border-gray-800 pb-1">
-                                <span className="text-gray-400">[{new Date(log.timestamp).toLocaleTimeString()}]</span>
-                                <span className="text-blue-600 dark:text-neon-main">{getUserName(log.userId)}:</span>
-                                <span>{log.action}</span>
+                            <div key={log.id} className="border-b border-gray-100 dark:border-gray-800 pb-2 last:border-b-0">
+                                <div className="flex gap-2 items-start mb-1">
+                                    <span className="text-gray-400 flex-shrink-0">[{new Date(log.timestamp).toLocaleTimeString()}]</span>
+                                    <span className="text-blue-600 dark:text-neon-main flex-shrink-0">{getUserName(log.userId)}:</span>
+                                    <span className="text-gray-700 dark:text-gray-300 flex-1">{log.action}</span>
+                                </div>
+                                {log.fieldName && (
+                                    <div className="ml-16 space-y-1 text-gray-500 dark:text-gray-600">
+                                        <div className="flex gap-2">
+                                            <span className="font-semibold text-gray-600 dark:text-gray-500">{log.fieldName}:</span>
+                                            {log.oldValue !== undefined && log.newValue !== undefined && (
+                                                <>
+                                                    <span className="text-red-600 dark:text-red-400 line-through">
+                                                        {typeof log.oldValue === 'object' ? JSON.stringify(log.oldValue) : String(log.oldValue)}
+                                                    </span>
+                                                    <span className="text-gray-400">→</span>
+                                                    <span className="text-green-600 dark:text-green-400 font-semibold">
+                                                        {typeof log.newValue === 'object' ? JSON.stringify(log.newValue) : String(log.newValue)}
+                                                    </span>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         ))
                     ) : (
