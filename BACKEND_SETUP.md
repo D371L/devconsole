@@ -190,3 +190,4 @@ https://your-app-url.ondigitalocean.app/api/health
 - ✅ React frontend с автоматическим API integration
 - ✅ Автоматический деплой на DigitalOcean
 
+

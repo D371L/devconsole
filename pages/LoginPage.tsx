@@ -77,8 +77,29 @@ export const LoginPage: React.FC = () => {
               {isLoading ? 'CONNECTING...' : 'CONNECT'}
             </TerminalButton>
             
-            <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800 text-center">
-              <p className="text-xs text-gray-400 dark:text-gray-600">AUTHORIZED PERSONNEL ONLY</p>
+            <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800">
+              <div className="mb-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-600 mb-3 text-center">Test Users (Demo)</p>
+                <div className="space-y-2 font-mono text-xs">
+                  <div className="flex justify-between items-center py-1.5 px-3 bg-gray-50 dark:bg-gray-900/50 rounded dark:rounded-none border border-gray-200 dark:border-gray-800">
+                    <span className="text-gray-700 dark:text-gray-300"><span className="text-gray-500 dark:text-gray-500">admin</span> / password</span>
+                    <span className="text-blue-600 dark:text-neon-cyan">ADMIN</span>
+                  </div>
+                  <div className="flex justify-between items-center py-1.5 px-3 bg-gray-50 dark:bg-gray-900/50 rounded dark:rounded-none border border-gray-200 dark:border-gray-800">
+                    <span className="text-gray-700 dark:text-gray-300"><span className="text-gray-500 dark:text-gray-500">dev_jane</span> / password</span>
+                    <span className="text-green-600 dark:text-neon-green">DEVELOPER</span>
+                  </div>
+                  <div className="flex justify-between items-center py-1.5 px-3 bg-gray-50 dark:bg-gray-900/50 rounded dark:rounded-none border border-gray-200 dark:border-gray-800">
+                    <span className="text-gray-700 dark:text-gray-300"><span className="text-gray-500 dark:text-gray-500">dev_john</span> / password</span>
+                    <span className="text-green-600 dark:text-neon-green">DEVELOPER</span>
+                  </div>
+                </div>
+                <p className="text-[10px] text-gray-400 dark:text-gray-600 mt-3 text-center italic">These are demo accounts for testing purposes</p>
+              </div>
+              
+              <div className="text-center border-t border-gray-100 dark:border-gray-800 pt-4">
+                <p className="text-xs text-gray-400 dark:text-gray-600">AUTHORIZED PERSONNEL ONLY</p>
+              </div>
             </div>
           </form>
         </TerminalCard>
