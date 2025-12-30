@@ -3,638 +3,586 @@
 [![Open Source](https://badges.frapsoft.com/os/v1/open-source.svg?v=103)](https://opensource.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**DevConsole** — это современная open source система управления задачами с ретро-терминальным дизайном для команд разработчиков. Проект сочетает функциональность профессионального трекера задач с игровыми элементами и уникальным визуальным стилем в духе киберпанка.
+**DevConsole** is a modern open source task management system with a retro-terminal design for developer teams. The project combines the functionality of a professional task tracker with game elements and a unique visual style in the spirit of cyberpunk.
 
-Это полностью открытый проект, который можно использовать, модифицировать и распространять в соответствии с MIT лицензией.
+This is a fully open project that can be used, modified, and distributed in accordance with the MIT license.
 
-## 🎯 Основные характеристики
+## 🎯 Key Features
 
-- ✅ **Полнофункциональный трекер задач** с поддержкой статусов, приоритетов, дедлайнов
-- 🎮 **Геймификация** с системой уровней, XP и достижений
-- 🎨 **Ретро-терминальный дизайн** с поддержкой темной/светлой темы
-- 🔐 **Система ролей** с дифференцированными правами доступа (ADMIN, DEVELOPER, VIEWER)
-- 📊 **Множественные представления данных** (Таблица, Kanban, Граф, Календарь)
-- ⏱️ **Трекинг времени** с встроенным таймером и автосохранением
-- 💾 **Full-Stack архитектура** (PostgreSQL + Backend API + Frontend)
-- 🔊 **Звуковые эффекты** для улучшения UX
-- 🎯 **Хранилище кода** с сохранением фрагментов
-- 💬 **Расширенные комментарии** с упоминаниями, реакциями и редактированием
-- 📁 **Загрузка файлов** на сервер с превью изображений
-- 📈 **Экспорт данных** (CSV, JSON, PDF)
-- 📅 **Календарь событий** с визуализацией дедлайнов и статусов
-- 🔗 **Зависимости задач** и система тегов
-- 📱 **Мобильная адаптивность** с touch-friendly интерфейсом
-- 🔔 **Telegram уведомления** для событий задач
-- 🔒 **JWT авторизация** и rate limiting для безопасности
-- ⚡ **Оптимизация производительности** (code splitting, мемоизация, lazy loading)
-
----
-
-## 📋 Содержание
-
-- [Технологический стек](#технологический-стек)
-- [Архитектура проекта](#архитектура-проекта)
-- [Структура файлов](#структура-файлов)
-- [Основные функции](#основные-функции)
-- [Компоненты системы](#компоненты-системы)
-- [Сервисы](#сервисы)
-- [Установка и запуск](#установка-и-запуск)
-- [Использование](#использование)
-- [Роли и права доступа](#роли-и-права-доступа)
-- [API интеграции](#api-интеграции)
-- [Дополнительные возможности](#дополнительные-возможности)
+- ✅ **Full-featured task tracker** with support for statuses, priorities, deadlines
+- 🎮 **Gamification** with a level system, XP, and achievements
+- 🎨 **Retro-terminal design** with dark/light theme support
+- 🔐 **Role system** with differentiated access rights (ADMIN, DEVELOPER, VIEWER)
+- 📊 **Multiple data views** (Table, Kanban, Graph, Calendar)
+- ⏱️ **Time tracking** with built-in timer and auto-save
+- 💾 **Full-Stack architecture** (PostgreSQL + Backend API + Frontend)
+- 🔊 **Sound effects** for improved UX
+- 🎯 **Code vault** with code snippet storage
+- 💬 **Extended comments** with mentions, reactions, and editing
+- 📁 **File uploads** to server with image previews
+- 📈 **Data export** (CSV, JSON, PDF)
+- 📅 **Event calendar** with deadline and status visualization
+- 🔗 **Task dependencies** and tagging system
+- 📱 **Mobile responsiveness** with touch-friendly interface
+- 🔔 **Telegram notifications** for task events
+- 🔒 **JWT authorization** and rate limiting for security
+- ⚡ **Performance optimization** (code splitting, memoization, lazy loading)
 
 ---
 
-## 🛠 Технологический стек
+## 📋 Table of Contents
+
+- [Technology Stack](#technology-stack)
+- [Project Architecture](#project-architecture)
+- [File Structure](#file-structure)
+- [Core Features](#core-features)
+- [System Components](#system-components)
+- [Services](#services)
+- [Installation and Setup](#installation-and-setup)
+- [Usage](#usage)
+- [Roles and Permissions](#roles-and-permissions)
+- [API Integrations](#api-integrations)
+- [Additional Features](#additional-features)
+
+---
+
+## 🛠 Technology Stack
 
 ### Frontend
-- **React 19.2.1** — современная библиотека для создания пользовательских интерфейсов
-- **TypeScript 5.8.2** — типизированный JavaScript для надежности кода
-- **React Router DOM 7.10.1** — маршрутизация в SPA
+- **React 19.2.1** — modern library for building user interfaces
+- **TypeScript 5.8.2** — typed JavaScript for code reliability
+- **React Router DOM 7.10.1** — routing in SPA
 
 ### Build & Development
-- **Vite 6.2.0** — быстрый сборщик и dev-сервер
-- **@vitejs/plugin-react 5.0.0** — плагин React для Vite
+- **Vite 6.2.0** — fast bundler and dev server
+- **@vitejs/plugin-react 5.0.0** — React plugin for Vite
 
-### Стилизация
-- **Tailwind CSS** (CDN) — utility-first CSS фреймворк
-- Кастомные CSS-переменные для темной темы и неоновых эффектов
-- Шрифты: JetBrains Mono, VT323 (ретро-стиль)
+### Styling
+- **Tailwind CSS** (CDN) — utility-first CSS framework
+- Custom CSS variables for dark theme and neon effects
+- Fonts: JetBrains Mono, VT323 (retro style)
 
 ### Backend
-- **Node.js + Express** — Backend API сервер
-- **PostgreSQL** — реляционная база данных
+- **Node.js + Express** — Backend API server
+- **PostgreSQL** — relational database
 
 ### Audio
-- **Web Audio API** — программная генерация звуковых эффектов (без внешних файлов)
+- **Web Audio API** — programmatic sound effect generation (without external files)
 
 ---
 
-## 🏗 Архитектура проекта
+## 🏗 Project Architecture
 
-### Управление состоянием
+### State Management
 
-Проект использует **Context API** для централизованного управления состоянием приложения:
+The project uses **Context API** for centralized application state management:
 
-- **AppContext** (`context/AppContext.tsx`) — основной провайдер состояния
-  - Управление пользователями, задачами, проектами, сниппетами
-  - Текущий пользователь и настройки приложения
-  - Все CRUD-операции
-  - Система уведомлений
-  - Настройки темы и звука
+- **AppContext** (`context/AppContext.tsx`) — main state provider
+  - User, task, project, snippet management
+  - Current user and application settings
+  - All CRUD operations
+  - Notification system
+  - Theme and sound settings
 
-### Хранение данных
+### Data Storage
 
-**Backend API + PostgreSQL (Full-Stack режим):**
-- Данные хранятся в PostgreSQL базе данных
-- REST API сервер на Node.js/Express
-- Автоматическое подключение при доступности API
-- Все CRUD операции через API endpoints
+**Backend API + PostgreSQL (Full-Stack mode):**
+- Data stored in PostgreSQL database
+- REST API server on Node.js/Express
+- Automatic connection when API is available
+- All CRUD operations through API endpoints
 
-**Локальное хранение (Fallback):**
-- Если API недоступен, используется `localStorage` браузера
-- Ключи: `devterm_users`, `devterm_tasks`, `devterm_projects`, `devterm_snippets`
-- Настройки: `devterm_current_user_id`, `devterm_theme`, `devterm_color`, `devterm_sound`
+**Local Storage (Fallback):**
+- If API is unavailable, browser's `localStorage` is used
+- Keys: `devterm_users`, `devterm_tasks`, `devterm_projects`, `devterm_snippets`
+- Settings: `devterm_current_user_id`, `devterm_theme`, `devterm_color`, `devterm_sound`
 
+### Routing
 
-### Роутинг
+**HashRouter** is used for static deployment support:
+- `/login` — login page
+- `/dashboard` — main dashboard with tasks (search, sort, filters, export)
+- `/task/:id` — task view/edit (auto-save, files, comments)
+- `/create-task` — create new task
+- `/calendar` — event calendar (creation, statuses, deadlines)
+- `/snippets` — code vault
+- `/logs` — system logs
+- `/leaderboard` — leaderboard
+- `/admin` — admin panel (ADMIN only)
 
-Используется **HashRouter** для поддержки статической деплоя:
-- `/login` — страница входа
-- `/dashboard` — главная панель с задачами (поиск, сортировка, фильтры, экспорт)
-- `/task/:id` — просмотр/редактирование задачи (автосохранение, файлы, комментарии)
-- `/create-task` — создание новой задачи
-- `/calendar` — календарь событий (создание, статусы, дедлайны)
-- `/terminal` — AI-терминал
-- `/snippets` — хранилище кода
-- `/logs` — системные логи
-- `/leaderboard` — таблица лидеров
-- `/admin` — панель администратора (только для ADMIN)
-
-Защита маршрутов реализована через компонент `ProtectedRoute` с JWT-авторизацией.
+Route protection is implemented through the `ProtectedRoute` component with JWT authorization.
 
 ### Code Splitting
 
-Приложение использует **React.lazy** и **Suspense** для оптимизации загрузки:
-- Ленивая загрузка всех основных страниц
-- Разделение кода на чанки для уменьшения начального размера бандла
-- Fallback-индикаторы загрузки
+The application uses **React.lazy** and **Suspense** for loading optimization:
+- Lazy loading of all main pages
+- Code splitting into chunks to reduce initial bundle size
+- Loading fallback indicators
 
 ---
 
-## 📁 Структура файлов
+## 📁 File Structure
 
 ```
 devconsole/
-├── backend/                 # Backend API сервер
-│   ├── server.js           # Express сервер с REST API
-│   ├── package.json        # Зависимости backend
-│   └── .env                # Переменные окружения (не в git)
+├── backend/                 # Backend API server
+│   ├── server.js           # Express server with REST API
+│   ├── package.json        # Backend dependencies
+│   └── .env                # Environment variables (not in git)
 │
-├── components/              # Переиспользуемые компоненты
-│   ├── CommandPalette.tsx   # Командная палитра (Cmd+K)
-│   ├── DashboardWidgets.tsx # Виджеты дашборда (Kanban, графики, метрики)
-│   ├── DigitalRain.tsx      # Матричный эффект дождя
-│   ├── ErrorBoundary.tsx    # Обработка ошибок React
-│   ├── GraphView.tsx        # Граф зависимостей задач
-│   ├── Layout.tsx           # Основной layout с сайдбаром
-│   ├── SnakeGame.tsx        # Игра "Змейка" (пасхалка)
-│   └── TerminalUI.tsx       # Базовые UI компоненты в стиле терминала
+├── components/              # Reusable components
+│   ├── CommandPalette.tsx   # Command palette (Cmd+K)
+│   ├── DashboardWidgets.tsx # Dashboard widgets (Kanban, charts, metrics)
+│   ├── DigitalRain.tsx      # Matrix rain effect
+│   ├── ErrorBoundary.tsx    # React error handling
+│   ├── GraphView.tsx        # Task dependency graph
+│   ├── Layout.tsx           # Main layout with sidebar
+│   ├── SnakeGame.tsx        # Snake game (easter egg)
+│   └── TerminalUI.tsx       # Basic UI components in terminal style
 │
 ├── context/                 # React Context
-│   └── AppContext.tsx       # Глобальное состояние приложения
+│   └── AppContext.tsx       # Global application state
 │
-├── database/                # База данных
-│   └── schema.sql          # SQL схема PostgreSQL
+├── database/                # Database
+│   └── schema.sql          # PostgreSQL SQL schema
 │
 ├── hooks/                   # Custom React Hooks
-│   └── useDebounce.ts       # Хук для debounce значений
+│   └── useDebounce.ts       # Hook for debouncing values
 │
-├── pages/                   # Страницы приложения
-│   ├── AdminPanel.tsx       # Панель администратора
-│   ├── CalendarPage.tsx     # Календарь событий задач
-│   ├── Dashboard.tsx        # Главная страница с задачами
-│   ├── Leaderboard.tsx      # Таблица лидеров (XP/уровни)
-│   ├── LoginPage.tsx        # Страница входа
-│   ├── Snippets.tsx         # Хранилище кода
-│   ├── SystemLogs.tsx       # Системные логи
-│   ├── TaskDetail.tsx       # Детальный просмотр задачи
+├── pages/                   # Application pages
+│   ├── AdminPanel.tsx       # Admin panel
+│   ├── CalendarPage.tsx     # Task event calendar
+│   ├── Dashboard.tsx        # Main tasks page
+│   ├── Leaderboard.tsx      # Leaderboard (XP/levels)
+│   ├── LoginPage.tsx        # Login page
+│   ├── Snippets.tsx         # Code vault
+│   ├── SystemLogs.tsx       # System logs
+│   ├── TaskDetail.tsx       # Task detail view
 │
-├── services/                # Внешние сервисы
-│   ├── apiService.ts        # REST API клиент для backend
-│   ├── exportService.ts     # Экспорт данных (CSV, JSON, PDF)
-│   ├── soundService.ts      # Генерация звуковых эффектов
-│   └── telegramService.ts   # Telegram уведомления (backend)
+├── services/                # External services
+│   ├── apiService.ts        # REST API client for backend
+│   ├── exportService.ts     # Data export (CSV, JSON, PDF)
+│   ├── soundService.ts      # Sound effect generation
+│   └── telegramService.ts   # Telegram notifications (backend)
 │
-├── App.tsx                  # Главный компонент с роутингом
-├── constants.ts             # Константы, начальные данные, утилиты
-├── index.html               # HTML шаблон
-├── index.tsx                # Точка входа
-├── types.ts                 # TypeScript типы и интерфейсы
-├── vite.config.ts           # Конфигурация Vite
-└── tsconfig.json            # Конфигурация TypeScript
+├── App.tsx                  # Main component with routing
+├── constants.ts             # Constants, initial data, utilities
+├── index.html               # HTML template
+├── index.tsx                # Entry point
+├── types.ts                 # TypeScript types and interfaces
+├── vite.config.ts           # Vite configuration
+└── tsconfig.json            # TypeScript configuration
 ```
 
 ---
 
-## ⚡ Основные функции
+## ⚡ Core Features
 
-### 1. Управление задачами
+### 1. Task Management
 
-**Создание задач:**
-- Заголовок и описание
-- Привязка к проекту
-- Назначение исполнителя
-- Установка приоритета (LOW, MEDIUM, HIGH, CRITICAL)
-- Установка дедлайна
-- Статусы: TODO → IN_PROGRESS → REVIEW → DONE (или BLOCKED)
+**Creating Tasks:**
+- Title and description
+- Project assignment
+- Assignee assignment
+- Priority setting (LOW, MEDIUM, HIGH, CRITICAL)
+- Deadline setting
+- Statuses: TODO → IN_PROGRESS → REVIEW → DONE (or BLOCKED)
 
-**Редактирование задач:**
-- Изменение всех параметров с автосохранением (2.5 сек debounce)
-- Добавление подзадач (вручную или через AI) с автоматическим расчетом прогресса
-- Расширенные комментарии с упоминаниями (`@username`), реакциями (👍❤️😄🎉), редактированием и удалением
-- Загрузка файлов на сервер с превью изображений (до 10MB)
-- Детальная история изменений (Activity Log) с отслеживанием всех полей
-- Зависимости задач (dependsOn) и система тегов
-- Индикатор сохранения ("Saving...", "Saved ✓", "Error!")
+**Editing Tasks:**
+- Change all parameters with auto-save (2.5 sec debounce)
+- Add subtasks (manually) with automatic progress calculation
+- Extended comments with mentions (`@username`), reactions (👍❤️😄🎉), editing and deletion
+- File uploads to server with image previews (up to 10MB)
+- Detailed change history (Activity Log) with tracking of all fields
+- Task dependencies (dependsOn) and tagging system
+- Save indicator ("Saving...", "Saved ✓", "Error!")
 
-### 2. Система геймификации
+### 2. Gamification System
 
-**Уровни и XP:**
-- 100 уникальных уровней с креативными названиями ("Null Pointer", "Syntax Trainee", ..., "The Singularity")
-- Формула: Уровень = floor(XP / 500) + 1 (максимум 100)
-- Отображение прогресса до следующего уровня
+**Levels and XP:**
+- 100 unique levels with creative names ("Null Pointer", "Syntax Trainee", ..., "The Singularity")
+- Formula: Level = floor(XP / 500) + 1 (maximum 100)
+- Progress display to next level
 
-**Начисление XP:**
-- Завершение задачи: +150 XP
-- Высокий приоритет: +100 XP бонус
-- Критический приоритет: +250 XP бонус
-- Достижения дают дополнительный XP
+**XP Awards:**
+- Task completion: +150 XP
+- High priority: +100 XP bonus
+- Critical priority: +250 XP bonus
+- Achievements provide additional XP
 
-**Достижения:**
-- "First Byte" — завершение первой задачи (+50 XP)
-- "Bug Hunter" — завершение 3 задач высокого/критического приоритета (+300 XP)
-- "Workaholic" — завершение 10 задач (+500 XP)
-- "Time Lord" — логирование более 10 часов работы (+200 XP)
-- "Early Bird" — завершение задачи до 8:00 утра (+150 XP)
-- "Night Owl" — завершение задачи после 22:00 (+150 XP)
-- "Weekend Warrior" — завершение 3 задач в выходные (+250 XP)
-- "Streak Master" — завершение задач 5 дней подряд (+400 XP)
-- "Speed Demon" — завершение задачи менее чем за 1 час (+200 XP)
+**Achievements:**
+- "First Byte" — complete first task (+50 XP)
+- "Bug Hunter" — complete 3 high/critical priority tasks (+300 XP)
+- "Workaholic" — complete 10 tasks (+500 XP)
+- "Time Lord" — log over 10 hours of work (+200 XP)
+- "Early Bird" — complete task before 8:00 AM (+150 XP)
+- "Night Owl" — complete task after 10:00 PM (+150 XP)
+- "Weekend Warrior" — complete 3 tasks on weekends (+250 XP)
+- "Streak Master" — complete tasks for 5 consecutive days (+400 XP)
+- "Speed Demon" — complete task in less than 1 hour (+200 XP)
 
-### 3. Трекинг времени
+### 3. Time Tracking
 
-- Встроенный таймер для каждой задачи
-- Запуск/остановка отслеживания времени
-- Накопительный подсчет времени (в секундах)
-- Форматирование времени (HH:MM:SS)
-- Автоматическое сохранение состояния таймера в базу данных
-- Синхронизация состояния при перезагрузке страницы
+- Built-in timer for each task
+- Start/stop time tracking
+- Cumulative time tracking (in seconds)
+- Time formatting (HH:MM:SS)
+- Automatic timer state saving to database
+- State synchronization on page reload
 
-### 4. Управление проектами
+### 4. Project Management
 
-- Создание проектов с названием и цветом
-- Группировка задач по проектам
-- Визуальные индикаторы проектов (цветные бейджи)
-- Фильтрация задач по проектам
+- Create projects with name and color
+- Group tasks by projects
+- Visual project indicators (colored badges)
+- Filter tasks by projects
 
-### 5. Хранилище кода (Code Vault)
+### 5. Code Vault
 
-- Сохранение фрагментов кода с названием и языком
-- Поддержка языков: JavaScript, TypeScript, Python, CSS, HTML, SQL
-- Поиск по названию и содержимому
+- Save code snippets with title and language
+- Supported languages: JavaScript, TypeScript, Python, CSS, HTML, SQL
+- Search by title and content
 
-### 6. Визуализация данных
+### 6. Data Visualization
 
-**Три режима отображения:**
+**Three Display Modes:**
 
-1. **Таблица** — классическое табличное представление с пагинацией
-2. **Kanban Board** — доска с колонками статусов, drag-and-drop
-3. **Graph View** — граф связей между задачами и пользователями
+1. **Table** — classic table view with pagination
+2. **Kanban Board** — board with status columns, drag-and-drop
+3. **Graph View** — graph of relationships between tasks and users
 
-**Дополнительно:**
-- Статистика задач (графики распределения, метрики)
-- Фильтрация по статусу, проекту, приоритету, исполнителю, дедлайну
-- Поиск по тексту и сортировка по всем полям (ID, заголовок, дедлайн, дата завершения, приоритет, дата создания, статус)
-- Drag & drop для изменения порядка задач в таблице
-- Экспорт в CSV, JSON, PDF форматы
-- Мобильная карточная версия для маленьких экранов
-- Виджеты: метрики (активные задачи, время сегодня, предстоящие, просроченные), график распределения, календарь
+**Additional:**
+- Task statistics (distribution charts, metrics)
+- Filtering by status, project, priority, assignee, deadline
+- Text search and sorting by all fields (ID, title, deadline, completion date, priority, creation date, status)
+- Drag & drop to change task order in table
+- Export to CSV, JSON, PDF formats
+- Mobile card view for small screens
+- Widgets: metrics (active tasks, time today, upcoming, overdue), distribution chart, calendar
 
-### 7. AI-терминал
+### 7. Notification System
 
-Интерактивный терминал для общения с AI:
-- Команды: `list`, `clear`, `help`
-- Вопросы к AI о задачах или программировании
-- Контекстное понимание текущих задач
-- Роботизированный стиль ответов в духе киберпанка
-
-### 8. Система уведомлений
-
-- Toast-уведомления для всех действий
-- Типы: success, error, info, warning
-- Автоматическое скрытие
-- Звуковые эффекты (опционально)
-- Telegram уведомления при создании задачи, смене статуса, назначении исполнителя
-- Уведомления о достижениях показываются один раз за сессию
+- Toast notifications for all actions
+- Types: success, error, info, warning
+- Auto-hide
+- Sound effects (optional)
+- Telegram notifications on task creation, status change, assignee assignment
+- Achievement notifications shown once per session
 
 ---
 
-## 🧩 Компоненты системы
+## 🧩 System Components
 
 ### Layout (`components/Layout.tsx`)
 
-Основной компонент макета приложения:
-- **Боковая панель** с навигацией
-- **Статистика пользователя** (уровень, XP, прогресс)
-- **Системные мониторы** (память, температура CPU - симуляция)
-- **Переключатели настроек** (тема, звук, эффекты)
-- **RGB-тюнер** для изменения цветовых акцентов
-- **Адаптивный дизайн** для мобильных устройств
+Main application layout component:
+- **Sidebar** with navigation
+- **User statistics** (level, XP, progress)
+- **System monitors** (memory, CPU temperature - simulation)
+- **Settings toggles** (theme, sound, effects)
+- **RGB tuner** for changing color accents
+- **Responsive design** for mobile devices
 
 ### Dashboard (`pages/Dashboard.tsx`)
 
-Главная страница управления задачами:
-- Расширенные фильтры по статусу, проекту, приоритету, исполнителю, дедлайну
-- Поиск по тексту в задачах
-- Сортировка по всем полям (ID, заголовок, дедлайн, дата завершения, приоритет, дата создания, статус)
-- Переключение режимов просмотра (Table/Board/Graph)
-- Пагинация для табличного режима
-- Drag & drop для изменения порядка задач
-- Экспорт в CSV, JSON, PDF
-- Виджеты: метрики, график распределения задач
-- Мобильная адаптация с карточным видом
+Main task management page:
+- Advanced filters by status, project, priority, assignee, deadline
+- Text search in tasks
+- Sorting by all fields (ID, title, deadline, completion date, priority, creation date, status)
+- View mode switching (Table/Board/Graph)
+- Pagination for table mode
+- Drag & drop to change task order
+- Export to CSV, JSON, PDF
+- Widgets: metrics, task distribution chart
+- Mobile adaptation with card view
 
 ### TaskDetail (`pages/TaskDetail.tsx`)
 
-Детальная страница задачи:
-- Редактирование всех параметров с автосохранением (debounce 2.5 сек)
-- Индикатор сохранения ("Saving...", "Saved ✓", "Error!")
-- Управление подзадачами (чеклист) с автоматическим расчетом прогресса
-- Расширенные комментарии:
-  - Упоминания пользователей (`@username`) с Telegram уведомлениями
-  - Реакции (👍❤️😄🎉), видимые при наведении
-  - Редактирование и удаление своих комментариев
-- Загрузка файлов на сервер (до 10MB) с превью изображений
-- Управление зависимостями задач и тегами
-- Детальная история изменений (Activity Log) с отслеживанием всех полей
-- Таймер времени с автосохранением состояния
-- Проверка прав доступа VIEWER роли
-
-### TerminalPage (`pages/TerminalPage.tsx`)
-
-AI-терминал для взаимодействия с системой:
-- Командная строка в стиле терминала
-- История команд и ответов
-- Интеграция с Gemini API
-- Автопрокрутка к последнему сообщению
+Task detail page:
+- Edit all parameters with auto-save (2.5 sec debounce)
+- Save indicator ("Saving...", "Saved ✓", "Error!")
+- Subtask management (checklist) with automatic progress calculation
+- Extended comments:
+  - User mentions (`@username`) with Telegram notifications
+  - Reactions (👍❤️😄🎉), visible on hover
+  - Edit and delete own comments
+- File uploads to server (up to 10MB) with image previews
+- Task dependency and tag management
+- Detailed change history (Activity Log) with tracking of all fields
+- Time timer with auto-save state
+- VIEWER role access check
 
 ### Snippets (`pages/Snippets.tsx`)
 
-Хранилище кода:
-- Список сохраненных фрагментов
-- Форма добавления нового фрагмента
-- Поиск по содержимому
+Code vault:
+- List of saved snippets
+- Form to add new snippet
+- Search by content
 
 ### AdminPanel (`pages/AdminPanel.tsx`)
 
-Панель администратора:
-- **Управление пользователями:**
-  - Создание новых пользователей
-  - Редактирование существующих пользователей (имя, роль, аватар)
-  - Выбор роли (ADMIN, DEVELOPER, VIEWER)
-  - Для VIEWER: настройка разрешенных проектов (allowedProjects)
-  - Генерация/загрузка аватаров (DiceBear API или файл)
-  - Удаление пользователей
+Admin panel:
+- **User Management:**
+  - Create new users
+  - Edit existing users (name, role, avatar)
+  - Role selection (ADMIN, DEVELOPER, VIEWER)
+  - For VIEWER: configure allowed projects (allowedProjects)
+  - Avatar generation/upload (DiceBear API or file)
+  - Delete users
 
 ### CommandPalette (`components/CommandPalette.tsx`)
 
-Универсальная командная палитра:
-- Открывается по `Cmd+K` / `Ctrl+K`
-- Поиск команд по названию
-- Навигация по приложению
-- Быстрые действия (переключение темы, звука и т.д.)
-- Подсветка активной команды
+Universal command palette:
+- Opens with `Cmd+K` / `Ctrl+K`
+- Search commands by name
+- Application navigation
+- Quick actions (toggle theme, sound, etc.)
+- Active command highlighting
 
 ### DashboardWidgets (`components/DashboardWidgets.tsx`)
 
-Виджеты для дашборда:
-- **KanbanBoard** — доска с drag-and-drop
-- **TaskStatsChart** — графики статистики задач по статусам
-- **TaskMetrics** — метрики (активные задачи, время сегодня, предстоящие, просроченные)
-- **MiniCalendar** — мини-календарь с событиями задач
+Dashboard widgets:
+- **KanbanBoard** — board with drag-and-drop
+- **TaskStatsChart** — task statistics charts by status
+- **TaskMetrics** — metrics (active tasks, time today, upcoming, overdue)
+- **MiniCalendar** — mini calendar with task events
 
 ### CalendarPage (`pages/CalendarPage.tsx`)
 
-Страница календаря событий:
-- Полноэкранный календарь с навигацией по месяцам
-- Визуализация событий:
-  - Создание задачи (синяя точка)
-  - Смена статуса на IN_PROGRESS (зеленая точка)
-  - Дедлайн задачи (красная точка)
-- Детальный просмотр событий выбранной даты
-- Ссылки на задачи для быстрого перехода
+Event calendar page:
+- Full-screen calendar with month navigation
+- Event visualization:
+  - Task creation (blue dot)
+  - Status change to IN_PROGRESS (green dot)
+  - Task deadline (red dot)
+- Detailed view of events for selected date
+- Links to tasks for quick navigation
 
 ### GraphView (`components/GraphView.tsx`)
 
-Визуализация графа зависимостей:
-- Узлы — задачи и пользователи
-- Связи — назначения и проекты
-- Интерактивное отображение
+Dependency graph visualization:
+- Nodes — tasks and users
+- Connections — assignments and projects
+- Interactive display
 
 ### TerminalUI (`components/TerminalUI.tsx`)
 
-Базовые UI-компоненты в стиле терминала:
-- `TerminalButton` — кнопки с вариантами стилей
-- `TerminalInput` — поля ввода
-- `TerminalTextArea` — текстовые области
-- `TerminalCard` — карточки с заголовками
-- `StatusBadge` — бейджи статусов задач
-- `PriorityBadge` — бейджи приоритетов
-- `NotificationToast` — всплывающие уведомления
+Basic UI components in terminal style:
+- `TerminalButton` — buttons with style variants
+- `TerminalInput` — input fields
+- `TerminalTextArea` — text areas
+- `TerminalCard` — cards with headers
+- `StatusBadge` — task status badges
+- `PriorityBadge` — priority badges
+- `NotificationToast` — toast notifications
 
-### Вспомогательные компоненты
+### Helper Components
 
-- **DigitalRain** (`components/DigitalRain.tsx`) — матричный эффект дождя
-- **SnakeGame** (`components/SnakeGame.tsx`) — игра "Змейка" (пасхалка)
-- **ErrorBoundary** (`components/ErrorBoundary.tsx`) — обработка ошибок React с fallback UI
+- **DigitalRain** (`components/DigitalRain.tsx`) — matrix rain effect
+- **SnakeGame** (`components/SnakeGame.tsx`) — Snake game (easter egg)
+- **ErrorBoundary** (`components/ErrorBoundary.tsx`) — React error handling with fallback UI
 
 ---
 
-## 🔧 Сервисы
+## 🔧 Services
 
 ### API Service (`services/apiService.ts`)
 
-REST API клиент для взаимодействия с Backend:
+REST API client for Backend interaction:
 
-**Функции:**
-- Автоматическое определение URL API (DigitalOcean или локальный)
-- Поддержка относительных путей для VPS через Nginx
-- JWT авторизация с автоматическим добавлением токена в заголовки
-- Методы для всех CRUD операций:
+**Functions:**
+- Automatic API URL detection (DigitalOcean or local)
+- Support for relative paths for VPS via Nginx
+- JWT authorization with automatic token addition to headers
+- Methods for all CRUD operations:
   - Users: `getUsers()`, `createUser()`, `updateUser()`, `deleteUser()`
   - Tasks: `getTasks()`, `createTask()`, `updateTask()`, `deleteTask()`, `addComment()`, `editComment()`, `deleteComment()`, `addReaction()`
   - Projects: `getProjects()`, `createProject()`
   - Snippets: `getSnippets()`, `createSnippet()`, `deleteSnippet()`
   - Files: `uploadFile()`, `deleteFile()`, `getFileUrl()`
-- Health check для проверки доступности API
-- Retry механизм для сетевых ошибок (до 2 повторных попыток)
-- Graceful fallback на LocalStorage при недоступности API
+- Health check to verify API availability
+- Retry mechanism for network errors (up to 2 retries)
+- Graceful fallback to LocalStorage when API is unavailable
 
 ### Backend API (`backend/server.js`)
 
-Node.js/Express REST API сервер:
+Node.js/Express REST API server:
 
 **Endpoints:**
-- `GET /health` — проверка работоспособности
-- `POST /api/auth/login` — авторизация пользователя (JWT токен)
-- `GET /api/auth/verify` — проверка токена
-- `GET /api/users` — список пользователей (опциональная авторизация)
-- `POST /api/users` — создание пользователя (требуется ADMIN)
-- `PUT /api/users/:id` — обновление пользователя (требуется ADMIN)
-- `DELETE /api/users/:id` — удаление пользователя (требуется ADMIN)
-- `GET /api/tasks` — список задач (опциональная авторизация)
-- `POST /api/tasks` — создание задачи (требуется авторизация)
-- `PUT /api/tasks/:id` — обновление задачи (требуется авторизация)
-- `DELETE /api/tasks/:id` — удаление задачи (требуется авторизация)
-- `POST /api/tasks/:id/comments` — добавление комментария (требуется авторизация)
-- `PUT /api/tasks/:id/comments/:commentId` — редактирование комментария (требуется авторизация)
-- `DELETE /api/tasks/:id/comments/:commentId` — удаление комментария (требуется авторизация)
-- `POST /api/tasks/:id/comments/:commentId/reactions` — добавление/удаление реакции (требуется авторизация)
-- `POST /api/files/upload` — загрузка файла (требуется авторизация, до 10MB)
-- `DELETE /api/files/:filename` — удаление файла (требуется авторизация)
-- `GET /uploads/:filename` — получение загруженного файла
-- Аналогичные endpoints для projects и snippets
+- `GET /health` — health check
+- `POST /api/auth/login` — user authorization (JWT token)
+- `GET /api/auth/verify` — token verification
+- `GET /api/users` — user list (optional authorization)
+- `POST /api/users` — create user (requires ADMIN)
+- `PUT /api/users/:id` — update user (requires ADMIN)
+- `DELETE /api/users/:id` — delete user (requires ADMIN)
+- `GET /api/tasks` — task list (optional authorization)
+- `POST /api/tasks` — create task (requires authorization)
+- `PUT /api/tasks/:id` — update task (requires authorization)
+- `DELETE /api/tasks/:id` — delete task (requires authorization)
+- `POST /api/tasks/:id/comments` — add comment (requires authorization)
+- `PUT /api/tasks/:id/comments/:commentId` — edit comment (requires authorization)
+- `DELETE /api/tasks/:id/comments/:commentId` — delete comment (requires authorization)
+- `POST /api/tasks/:id/comments/:commentId/reactions` — add/remove reaction (requires authorization)
+- `POST /api/files/upload` — upload file (requires authorization, up to 10MB)
+- `DELETE /api/files/:filename` — delete file (requires authorization)
+- `GET /uploads/:filename` — get uploaded file
+- Similar endpoints for projects and snippets
 
-**Безопасность:**
-- JWT авторизация с токенами (по умолчанию 7 дней)
+**Security:**
+- JWT authorization with tokens (default 7 days)
 - Rate limiting:
-  - Общий лимит: 100 запросов за 15 минут
-  - Строгий лимит для логина: 5 попыток за 15 минут
-- Role-based access control (RBAC) для админских функций
-- Trust proxy для корректной работы за Nginx
+  - General limit: 100 requests per 15 minutes
+  - Strict limit for login: 5 attempts per 15 minutes
+- Role-based access control (RBAC) for admin functions
+- Trust proxy for correct operation behind Nginx
 
-**База данных:**
-- PostgreSQL через библиотеку `pg`
-- Автоматическое подключение с реконнектом
-- Поддержка SSL для production
-- JSONB для сложных структур данных (subtasks, comments, activityLog)
-- Массивы TEXT[] для тегов, зависимостей, allowedProjects
+**Database:**
+- PostgreSQL via `pg` library
+- Automatic connection with reconnect
+- SSL support for production
+- JSONB for complex data structures (subtasks, comments, activityLog)
+- TEXT[] arrays for tags, dependencies, allowedProjects
 
-**Telegram уведомления:**
-- Интеграция с Telegram Bot API
-- Уведомления при создании задачи, смене статуса, назначении исполнителя
-- Уведомления об упоминаниях в комментариях (`@username`)
-
-### Gemini Service (`services/geminiService.ts`)
-
-Интеграция с Google Gemini API:
-
-**Функции:**
-
-1. **`analyzeTaskAndGetSubtasks(title, description)`**
-   - Анализирует задачу и генерирует 3-5 подзадач
-   - Возвращает массив строк с названиями подзадач
-   - Использует структурированный JSON-ответ
-
-2. **`generateAsciiArt(title)`**
-   - Генерирует ASCII-арт баннер для заголовка
-   - Киберпанк-стиль, компактный формат (макс. 80 символов)
-
-3. **`chatWithSystem(message, context)`**
-   - Чат с AI о задачах и системе
-   - Контекстное понимание текущих задач
-   - Роботизированный стиль ответов
-
-4. **`auditCodeSnippet(code, language)`**
-   - Аудит кода на наличие багов и уязвимостей
-   - Предложения по оптимизации
-   - Оценка качества кода
-
-**Модель:** `gemini-2.5-flash`
+**Telegram Notifications:**
+- Telegram Bot API integration
+- Notifications on task creation, status change, assignee assignment
+- Notifications for mentions in comments (`@username`)
 
 ### Sound Service (`services/soundService.ts`)
 
-Генерация звуковых эффектов через Web Audio API:
+Sound effect generation via Web Audio API:
 
-**Функции:**
-- `playHover()` — звук наведения на элемент
-- `playClick()` — звук клика
-- `playSuccess()` — звук успешного действия
-- `playError()` — звук ошибки
-- `playNotification()` — звук уведомления
-- `playStartTimer()` — звук запуска таймера
-- `playStopTimer()` — звук остановки таймера
-- `setMuted(muted)` — включение/выключение звука
+**Functions:**
+- `playHover()` — hover sound
+- `playClick()` — click sound
+- `playSuccess()` — success sound
+- `playError()` — error sound
+- `playNotification()` — notification sound
+- `playStartTimer()` — timer start sound
+- `playStopTimer()` — timer stop sound
+- `setMuted(muted)` — mute/unmute sound
 
-Все звуки генерируются программно (без внешних файлов).
+All sounds are generated programmatically (without external files).
 
 ### Export Service (`services/exportService.ts`)
 
-Экспорт данных в различные форматы:
+Data export to various formats:
 
-**Функции:**
-- `exportToCSV()` — экспорт задач в CSV формат с форматированием
-- `exportToJSON()` — экспорт задач в JSON с метаданными
-- `exportToPDF()` — экспорт задач в PDF с табличным представлением (использует jsPDF)
+**Functions:**
+- `exportToCSV()` — export tasks to CSV format with formatting
+- `exportToJSON()` — export tasks to JSON with metadata
+- `exportToPDF()` — export tasks to PDF with table view (uses jsPDF)
 
-**Форматы экспорта включают:**
-- ID, заголовок, описание, проект, статус, приоритет
-- Исполнитель, дедлайн, дата завершения
-- Затраченное время (форматированное)
+**Export formats include:**
+- ID, title, description, project, status, priority
+- Assignee, deadline, completion date
+- Time spent (formatted)
 
 ### Telegram Service (`services/telegramService.ts`)
 
-Интеграция с Telegram Bot API для уведомлений:
+Telegram Bot API integration for notifications:
 
-**Функции:**
-- `sendTelegramNotification(message)` — отправка сообщения в Telegram чат
-- Markdown форматирование сообщений
-- Обработка ошибок без прерывания основной функциональности
+**Functions:**
+- `sendTelegramNotification(message)` — send message to Telegram chat
+- Markdown message formatting
+- Error handling without interrupting main functionality
 
-**Требуется:**
-- `TELEGRAM_BOT_TOKEN` — токен бота от @BotFather
-- `TELEGRAM_CHAT_ID` — ID чата для уведомлений
+**Required:**
+- `TELEGRAM_BOT_TOKEN` — bot token from @BotFather
+- `TELEGRAM_CHAT_ID` — chat ID for notifications
 
 ---
 
-## 🚀 Установка и запуск
+## 🚀 Installation and Setup
 
-### Предварительные требования
+### Prerequisites
 
-- **Node.js** (версия 18 или выше)
-- **npm** или **yarn**
-- **Git** (для клонирования репозитория)
-- **PostgreSQL** (версия 16 или выше, для Full-Stack режима, опционально)
+- **Node.js** (version 18 or higher)
+- **npm** or **yarn**
+- **Git** (for cloning repository)
+- **PostgreSQL** (version 16 or higher, for Full-Stack mode, optional)
 
-### Локальная разработка
+### Local Development
 
-1. **Клонируйте репозиторий:**
+1. **Clone the repository:**
    ```bash
    git clone https://github.com/D371L/devconsole.git
    cd devconsole
    ```
 
-2. **Установите зависимости frontend:**
+2. **Install frontend dependencies:**
    ```bash
    npm install
    ```
 
-3. **Настройте переменные окружения:**
+3. **Configure environment variables:**
    
-   Создайте файл `.env.local` в корне проекта:
+   Create a `.env.local` file in the project root:
    ```env
    VITE_API_URL=http://localhost:8080/api
-   GEMINI_API_KEY=your_gemini_api_key_here
    ```
-   
-   Для получения API ключа Gemini:
-   - Перейдите на [Google AI Studio](https://aistudio.google.com/)
-   - Создайте API ключ для Gemini
-   - Скопируйте ключ в `.env.local`
 
-4. **Запустите dev-сервер:**
+4. **Start dev server:**
    ```bash
    npm run dev
    ```
 
-   Приложение будет доступно по адресу: `http://localhost:3000`
+   The application will be available at: `http://localhost:3000`
 
-### Запуск Backend API (опционально, для Full-Stack режима)
+### Backend API Setup (optional, for Full-Stack mode)
 
-1. **Установите зависимости backend:**
+1. **Install backend dependencies:**
    ```bash
    cd backend
    npm install
    ```
 
-2. **Настройте PostgreSQL:**
+2. **Configure PostgreSQL:**
    ```bash
-   # Создайте базу данных
+   # Create database
    createdb devconsole
    
-   # Или через psql:
+   # Or via psql:
    psql -U postgres
    CREATE DATABASE devconsole;
    \q
    ```
 
-3. **Инициализируйте схему базы данных:**
+3. **Initialize database schema:**
    ```bash
    psql -U postgres -d devconsole < ../database/schema.sql
    ```
 
-4. **Создайте `.env` файл в папке `backend/`:**
+4. **Create `.env` file in `backend/` folder:**
    ```env
    DATABASE_URL=postgresql://username:password@localhost:5432/devconsole
    PORT=8080
    NODE_ENV=development
-   GEMINI_API_KEY=your_gemini_api_key_here
    JWT_SECRET=your_secret_key_change_in_production
    JWT_EXPIRES_IN=7d
-   TELEGRAM_BOT_TOKEN=your_telegram_bot_token (опционально)
-   TELEGRAM_CHAT_ID=your_telegram_chat_id (опционально)
+   TELEGRAM_BOT_TOKEN=your_telegram_bot_token (optional)
+   TELEGRAM_CHAT_ID=your_telegram_chat_id (optional)
    ```
 
-5. **Запустите backend:**
+5. **Start backend:**
    ```bash
    npm start
    ```
 
-   Backend будет доступен по адресу: `http://localhost:8080`
+   Backend will be available at: `http://localhost:8080`
 
-   **Примечание:** Приложение автоматически определит доступность API и будет использовать его вместо LocalStorage.
+   **Note:** The application will automatically detect API availability and use it instead of LocalStorage.
 
-### Сборка для production
+### Production Build
 
 ```bash
 npm run build
 ```
 
-Результат сборки будет в папке `dist/`.
+Build output will be in the `dist/` folder.
 
-### Предпросмотр production сборки
+### Preview Production Build
 
 ```bash
 npm run preview
@@ -642,64 +590,39 @@ npm run preview
 
 ---
 
-## 📖 Использование
+## 📖 Usage
 
-### Вход в систему
+### Login
 
-При первом запуске используйте тестовые аккаунты:
+On first run, use test accounts:
 
-| Username  | Password | Роль       | Описание           |
-|-----------|----------|------------|--------------------|
-| `admin`   | `password` | ADMIN     | Полный доступ      |
-| `dev_jane`| `password` | DEVELOPER | Создание задач     |
-| `dev_john`| `password` | DEVELOPER | Создание задач     |
+| Username  | Password | Role       | Description        |
+|-----------|----------|------------|---------------------|
+| `admin`   | `password` | ADMIN     | Full access        |
+| `dev_jane`| `password` | DEVELOPER | Task creation      |
+| `dev_john`| `password` | DEVELOPER | Task creation      |
 
-Пароль для всех: `password`
+Password for all: `password`
 
-### Создание задачи
+### Creating a Task
 
-1. Нажмите кнопку **"+ NEW DIRECTIVE"** на дашборде
-2. Заполните обязательные поля:
-   - Название задачи
-   - Описание
-   - Проект
-3. Опционально:
-   - Назначьте исполнителя
-   - Установите приоритет и дедлайн
-   - Добавьте подзадачи
-   - Прикрепите изображения
-4. Нажмите **"EXECUTE SAVE"**
+1. Click the **"+ NEW DIRECTIVE"** button on the dashboard
+2. Fill in required fields:
+   - Task title
+   - Description
+   - Project
+3. Optional:
+   - Assign assignee
+   - Set priority and deadline
+   - Add subtasks
+   - Attach images
+4. Click **"EXECUTE SAVE"**
 
-### Использование AI-функций
+### Command Palette
 
-**Генерация подзадач:**
-- В форме создания/редактирования задачи
-- Заполните название и описание
-- Нажмите **"✦ GEMINI_AUTO_GEN"**
-- AI автоматически создаст подзадачи
+Press `Cmd+K` (Mac) or `Ctrl+K` (Windows/Linux) to open the command palette.
 
-**Генерация ASCII-арт:**
-- В поле названия задачи нажмите кнопку **"TXT_ART"**
-- ASCII-арт будет добавлен в начало описания
-
-**AI-терминал:**
-- Перейдите на страницу **"AI Terminal"**
-- Введите команду или вопрос
-- Примеры:
-  - `list` — показать активные задачи
-  - `query How many tasks are in progress?` — вопрос о задачах
-
-**Аудит кода:**
-- В хранилище кода (Code Vault)
-- Откройте сниппет
-- Нажмите **"[ AI_AUDIT ]"**
-- Получите отчет с анализом
-
-### Командная палитра
-
-Нажмите `Cmd+K` (Mac) или `Ctrl+K` (Windows/Linux) для открытия командной палитры.
-
-**Доступные команды:**
+**Available commands:**
 - Go to Dashboard
 - Create New Directive
 - Open Code Vault
@@ -708,140 +631,125 @@ npm run preview
 - Toggle Sound FX
 - Toggle Matrix Rain
 - run protocol_snake
-- Admin Panel (только для ADMIN)
+- Admin Panel (ADMIN only)
 - Disconnect (Logout)
 
-### Настройки
+### Settings
 
-В боковой панели доступны переключатели:
+The sidebar has toggles:
 
-- **THEME_MODE** — переключение между светлой и темной темой
-- **AUDIO_FX** — включение/выключение звуковых эффектов
-- **MATRIX_FX** — включение/выключение матричного эффекта дождя
-- **RGB_TUNING** — выбор цветового акцента (Cyan, Purple, Green, Amber, Pink)
-
----
-
-## 👥 Роли и права доступа
-
-### ADMIN (Администратор)
-
-**Полный доступ ко всем функциям:**
-- Создание, редактирование и удаление задач
-- Управление пользователями (создание, удаление)
-- Доступ к Admin Panel
-- Просмотр всех задач и данных
-
-### DEVELOPER (Разработчик)
-
-**Доступ к основной функциональности:**
-- Создание и редактирование задач
-- Управление своими задачами
-- Доступ к хранилищу кода
-- Просмотр дашборда и статистики
-- **Нет доступа:** Admin Panel, управление пользователями
-
-### VIEWER (Наблюдатель)
-
-**Только просмотр:**
-- Просмотр задач только из разрешенных проектов (`allowedProjects`)
-- Просмотр дашборда и графиков (фильтрованных по разрешенным проектам)
-- Просмотр хранилища кода
-- Комментарии только для чтения (без редактирования и реакций)
-- **Нет доступа:** создание задач, редактирование, Admin Panel, управление файлами
+- **THEME_MODE** — switch between light and dark theme
+- **AUDIO_FX** — enable/disable sound effects
+- **MATRIX_FX** — enable/disable matrix rain effect
+- **RGB_TUNING** — choose color accent (Cyan, Purple, Green, Amber, Pink)
 
 ---
 
-## 🔌 API интеграции
+## 👥 Roles and Permissions
 
-### Google Gemini API
+### ADMIN (Administrator)
 
-**Назначение:** AI-функции для автоматизации и анализа
+**Full access to all functions:**
+- Create, edit, and delete tasks
+- User management (create, delete)
+- Access to Admin Panel
+- View all tasks and data
 
-**Требуется:**
-- API ключ от Google AI Studio
-- Установка в переменную окружения `GEMINI_API_KEY`
+### DEVELOPER
 
-**Используемые возможности:**
-- Генерация контента (подзадачи, ASCII-арт)
-- Структурированные ответы (JSON)
-- Контекстный анализ кода
+**Access to core functionality:**
+- Create and edit tasks
+- Manage own tasks
+- Access to code vault
+- View dashboard and statistics
+- **No access:** Admin Panel, user management
 
-**Модель:** `gemini-2.5-flash`
+### VIEWER
+
+**Read-only:**
+- View tasks only from allowed projects (`allowedProjects`)
+- View dashboard and charts (filtered by allowed projects)
+- View code vault
+- Comments read-only (no editing or reactions)
+- **No access:** task creation, editing, Admin Panel, file management
+
+---
+
+## 🔌 API Integrations
 
 ### Telegram Bot API
 
-**Назначение:** Уведомления о событиях задач
+**Purpose:** Notifications for task events
 
-**Требуется:**
-- Создать бота через @BotFather в Telegram
-- Получить `TELEGRAM_BOT_TOKEN`
-- Получить `TELEGRAM_CHAT_ID` (ID группы или личного чата)
-- Установить в переменные окружения backend
+**Required:**
+- Create bot via @BotFather in Telegram
+- Get `TELEGRAM_BOT_TOKEN`
+- Get `TELEGRAM_CHAT_ID` (group or private chat ID)
+- Set in backend environment variables
 
-**Типы уведомлений:**
-- Создание новой задачи
-- Смена статуса задачи (особенно на DONE)
-- Назначение исполнителя
-- Упоминания в комментариях (`@username`)
+**Notification Types:**
+- New task creation
+- Task status change (especially to DONE)
+- Assignee assignment
+- Mentions in comments (`@username`)
 
 ---
 
-## 🎨 Дополнительные возможности
+## 🎨 Additional Features
 
-### Темизация
+### Theming
 
-**Темная тема:**
-- Неоновые эффекты (glow)
+**Dark Theme:**
+- Neon effects (glow)
 - CRT scanline overlay
-- Высокий контраст
-- Поддержка 5 цветовых акцентов
+- High contrast
+- Support for 5 color accents
 
-**Светлая тема:**
-- Чистый минималистичный дизайн
-- Стандартные цвета
+**Light Theme:**
+- Clean minimalist design
+- Standard colors
 
-Переключение темы сохраняется в `localStorage`.
+Theme switching is saved in `localStorage`.
 
-### Звуковые эффекты
+### Sound Effects
 
-Все звуки генерируются через Web Audio API:
-- Ретро-синтезированные звуки
-- Разные тональности для разных действий
-- Можно отключить в настройках
+All sounds are generated via Web Audio API:
+- Retro-synthesized sounds
+- Different tones for different actions
+- Can be disabled in settings
 
-### Эффекты
+### Effects
 
-**Digital Rain (Матричный дождь):**
-- Анимированный фоновый эффект
-- Включается в настройках
-- Работает только в темной теме
+**Digital Rain (Matrix Rain):**
+- Animated background effect
+- Enabled in settings
+- Works only in dark theme
 
-**Snake Game (Змейка):**
-- Пасхалка, активируется через Command Palette
-- Классическая игра "Змейка"
-- Управление стрелками
+**Snake Game:**
+- Easter egg, activated via Command Palette
+- Classic Snake game
+- Arrow key controls
 
-### Системные мониторы
+### System Monitors
 
-В футере отображаются (симуляция):
-- **HEAP_MEM** — использование памяти браузером
-- **CPU_TEMP** — температура процессора (симуляция)
+The footer displays (simulation):
+- **HEAP_MEM** — browser memory usage
+- **CPU_TEMP** — CPU temperature (simulation)
 
-В Chrome/Edge используется реальное API `performance.memory`.
+Chrome/Edge uses the real `performance.memory` API.
 
-### Адаптивность
+### Responsiveness
 
-- Полная поддержка мобильных устройств
-- Адаптивная боковая панель
-- Оптимизированные формы для touch-устройств
-- Responsive графики и таблицы
+- Full mobile device support
+- Responsive sidebar
+- Optimized forms for touch devices
+- Responsive charts and tables
 
 ---
 
-## 📝 Структура данных
+## 📝 Data Structure
 
-### Task (Задача)
+### Task
 
 ```typescript
 interface Task {
@@ -853,23 +761,23 @@ interface Task {
   createdBy: string;
   createdAt: number;
   deadline?: string;
-  completedAt?: number | null; // Timestamp когда задача была завершена
+  completedAt?: number | null; // Timestamp when task was completed
   status: TaskStatus; // TODO | IN_PROGRESS | REVIEW | DONE | BLOCKED
   priority: Priority; // LOW | MEDIUM | HIGH | CRITICAL
-  attachments: string[]; // URLs файлов на сервере (/uploads/filename) или base64 (legacy)
+  attachments: string[]; // File URLs on server (/uploads/filename) or base64 (legacy)
   subtasks: Subtask[];
   comments: Comment[];
   activityLog: ActivityLog[];
-  timeSpent: number; // секунды
-  timerStartedAt?: number | null; // Timestamp когда таймер запущен
-  dependsOn?: string[]; // Массив ID задач, от которых зависит эта задача
-  tags?: string[]; // Массив тегов (строк)
-  order?: number; // Порядок для сортировки (drag & drop)
-  progress?: number; // Прогресс выполнения (0-100%) на основе подзадач
+  timeSpent: number; // seconds
+  timerStartedAt?: number | null; // Timestamp when timer was started
+  dependsOn?: string[]; // Array of task IDs this task depends on
+  tags?: string[]; // Array of tags (strings)
+  order?: number; // Order for sorting (drag & drop)
+  progress?: number; // Completion progress (0-100%) based on subtasks
 }
 ```
 
-### User (Пользователь)
+### User
 
 ```typescript
 interface User {
@@ -879,22 +787,22 @@ interface User {
   role: Role; // ADMIN | DEVELOPER | VIEWER
   avatar?: string;
   xp: number;
-  achievements: string[]; // Массив ID достижений
-  allowedProjects?: string[]; // Массив ID проектов для VIEWER роли
+  achievements: string[]; // Array of achievement IDs
+  allowedProjects?: string[]; // Array of project IDs for VIEWER role
 }
 ```
 
-### Project (Проект)
+### Project
 
 ```typescript
 interface Project {
   id: string;
   name: string;
-  color: string; // Hex цвет
+  color: string; // Hex color
 }
 ```
 
-### Snippet (Фрагмент кода)
+### Snippet
 
 ```typescript
 interface Snippet {
@@ -907,7 +815,7 @@ interface Snippet {
 }
 ```
 
-### Comment (Комментарий)
+### Comment
 
 ```typescript
 interface Comment {
@@ -915,28 +823,28 @@ interface Comment {
   userId: string;
   text: string;
   timestamp: number;
-  mentions?: string[]; // Массив ID пользователей, упомянутых через @username
-  reactions?: { [emoji: string]: string[] }; // Объект: { '👍': ['userId1', 'userId2'] }
-  edited?: boolean; // Был ли комментарий отредактирован
-  editedAt?: number; // Timestamp последнего редактирования
+  mentions?: string[]; // Array of user IDs mentioned via @username
+  reactions?: { [emoji: string]: string[] }; // Object: { '👍': ['userId1', 'userId2'] }
+  edited?: boolean; // Whether comment was edited
+  editedAt?: number; // Timestamp of last edit
 }
 ```
 
-### ActivityLog (Лог активности)
+### ActivityLog
 
 ```typescript
 interface ActivityLog {
   id: string;
   userId: string;
-  action: string; // Название действия (например, 'UPDATE_TASK', 'CHANGE_STATUS')
+  action: string; // Action name (e.g., 'UPDATE_TASK', 'CHANGE_STATUS')
   timestamp: number;
-  fieldName?: string; // Название измененного поля (например, 'title', 'status')
-  oldValue?: any; // Предыдущее значение поля
-  newValue?: any; // Новое значение поля
+  fieldName?: string; // Name of changed field (e.g., 'title', 'status')
+  oldValue?: any; // Previous field value
+  newValue?: any; // New field value
 }
 ```
 
-### Subtask (Подзадача)
+### Subtask
 
 ```typescript
 interface Subtask {
@@ -948,220 +856,175 @@ interface Subtask {
 
 ---
 
-## 🔄 Константы и начальные данные
+## 🔄 Constants and Initial Data
 
-Все начальные данные определены в `constants.ts`:
+All initial data is defined in `constants.ts`:
 
-- `INITIAL_USERS` — начальные пользователи
-- `INITIAL_TASKS` — начальные задачи
-- `INITIAL_PROJECTS` — начальные проекты
-- `INITIAL_SNIPPETS` — начальные фрагменты кода
-- `ACHIEVEMENTS` — список достижений
-- `LEVEL_TITLES` — названия уровней (100 штук)
-- `STATUS_COLORS` — цвета статусов
-
----
-
-## 🎯 Особенности реализации
-
-### Хранение данных
-
-**Приоритет использования:**
-1. Backend API + PostgreSQL (если доступен)
-2. LocalStorage (fallback, только для настроек и текущего пользователя)
-
-**LocalStorage используется только для:**
-- `devterm_current_user_id` — ID текущего пользователя
-- `devterm_theme` — тема интерфейса
-- `devterm_color` — цветовой акцент
-- `devterm_sound` — настройки звука
-- `devterm_jwt_token` — JWT токен для авторизации
-
-**Данные задач, проектов, пользователей хранятся только в PostgreSQL.**
-
-### Обработка ошибок
-
-- **ErrorBoundary** — глобальная обработка React ошибок с fallback UI
-- Retry механизм для сетевых ошибок API (до 2 повторных попыток)
-- Информативные сообщения об ошибках пользователю
-- Логирование ошибок в консоль для отладки
-
-### Производительность
-
-- **Code Splitting** — ленивая загрузка всех основных страниц через `React.lazy`
-- **Мемоизация** — `useMemo` для вычисляемых списков, `useCallback` для функций
-- **Debounce** — автосохранение с задержкой 2.5 секунды для уменьшения запросов
-- Оптимизированные ререндеры через правильные зависимости хуков
-- Виртуализация больших списков (готово, но не активно из-за drag & drop)
-
-### Безопасность
-
-- **JWT авторизация** — токены с истечением срока действия (по умолчанию 7 дней)
-- **Rate limiting** — защита от злоупотребления API:
-  - Общий лимит: 100 запросов за 15 минут
-  - Логин: 5 попыток за 15 минут
-- **Role-based access control (RBAC)** — проверка прав на уровне API и UI
-- Защита маршрутов через `ProtectedRoute`
-- Проверка прав доступа на уровне компонентов
-- **Примечание:** В текущей реализации пароли хранятся в открытом виде. Для production рекомендуется использовать bcrypt или аналогичные библиотеки.
+- `INITIAL_USERS` — initial users
+- `INITIAL_TASKS` — initial tasks
+- `INITIAL_PROJECTS` — initial projects
+- `INITIAL_SNIPPETS` — initial code snippets
+- `ACHIEVEMENTS` — achievement list
+- `LEVEL_TITLES` — level names (100 items)
+- `STATUS_COLORS` — status colors
 
 ---
 
-## 🌐 Деплой
+## 🎯 Implementation Details
 
-Приложение поддерживает несколько вариантов деплоя:
+### Data Storage
 
-### 🖥️ VPS (Рекомендуется для Full-Stack)
+**Usage Priority:**
+1. Backend API + PostgreSQL (if available)
+2. LocalStorage (fallback, only for settings and current user)
 
-Полноценный деплой на VPS сервер с Backend API, PostgreSQL и Nginx:
+**LocalStorage is used only for:**
+- `devterm_current_user_id` — current user ID
+- `devterm_theme` — interface theme
+- `devterm_color` — color accent
+- `devterm_sound` — sound settings
+- `devterm_jwt_token` — JWT token for authorization
 
-📖 **[Подробная инструкция по деплою на VPS →](VPS_DEPLOY.md)**  
-⚡ **[Быстрый старт (5 минут) →](VPS_QUICK_START.md)**
+**Task, project, and user data is stored only in PostgreSQL.**
 
-**Преимущества:**
-- ✅ Полный контроль над сервером
-- ✅ Дешевле ($4-6/месяц vs $17+/месяц на App Platform)
-- ✅ Один сервер — всё в одном месте
-- ✅ Проще понять и настроить
+### Error Handling
 
-**Что включено:**
-- Frontend (статический сайт через Nginx)
-- Backend API (Node.js/Express через PM2)
-- PostgreSQL база данных
-- Автоматический деплой через `deploy.sh`
+- **ErrorBoundary** — global React error handling with fallback UI
+- Retry mechanism for API network errors (up to 2 retries)
+- Informative error messages for users
+- Error logging to console for debugging
 
-### ☁️ DigitalOcean App Platform
+### Performance
 
-Управляемый деплой с автоматическим масштабированием:
+- **Code Splitting** — lazy loading of all main pages via `React.lazy`
+- **Memoization** — `useMemo` for computed lists, `useCallback` for functions
+- **Debounce** — auto-save with 2.5 second delay to reduce requests
+- Optimized rerenders via correct hook dependencies
+- Virtualization of large lists (ready, but not active due to drag & drop)
 
-📖 **[Полная инструкция Full-Stack деплоя →](FULL_STACK_DEPLOY.md)**  
-📋 **[Настройка Backend →](BACKEND_SETUP.md)**
+### Security
 
-**Преимущества:**
-- ✅ Автоматический деплой при каждом push
-- ✅ Автоматическое масштабирование
-- ✅ Управляемая инфраструктура
-- ✅ Настройка через `.do/app.yaml`
+- **JWT Authorization** — tokens with expiration (default 7 days)
+- **Rate Limiting** — protection against API abuse:
+  - General limit: 100 requests per 15 minutes
+  - Login: 5 attempts per 15 minutes
+- **Role-based access control (RBAC)** — permission checks at API and UI level
+- Route protection via `ProtectedRoute`
+- Access permission checks at component level
+- **Note:** In current implementation, passwords are stored in plain text. For production, it is recommended to use bcrypt or similar libraries.
 
-**Архитектура:**
-- Static Site (Frontend)
-- Web Service (Backend API)
-- PostgreSQL Database
+---
 
-### 📊 Выбор способа деплоя
+## 🌐 Deployment
 
-📖 **[Сравнение вариантов деплоя →](DEPLOY_CHOICE.md)**
+The application supports multiple deployment options:
 
-### Другие платформы (только Frontend)
+### 📊 GitHub Pages
 
-Для деплоя только frontend (без backend API):
+For frontend-only deployment:
 
-- **Vercel** — отличная альтернатива для статических сайтов
-- **Netlify** — простой деплой через GitHub
-- **GitHub Pages** — бесплатный хостинг для open source
-- **Cloudflare Pages** — быстрый CDN
+- **GitHub Pages** — free hosting for open source
+- ✅ Automatic deployment via GitHub Actions
+- Test data available to demonstrate all features
 
-**Важно:** Убедитесь, что переменная окружения `GEMINI_API_KEY` настроена на платформе деплоя.
+### Current Deployment
 
-### Текущий деплой
+🌐 **Demo version on GitHub Pages:**
+- URL: [https://username.github.io/devconsole](https://username.github.io/devconsole) (replace `username` with your GitHub username)
+- Status: ✅ Automatic deployment via GitHub Actions
+- Test data available to demonstrate all features
 
-🌐 **Демо версия на GitHub Pages:**
-- URL: [https://username.github.io/devconsole](https://username.github.io/devconsole) (замените `username` на ваш GitHub username)
-- Статус: ✅ Автоматический деплой через GitHub Actions
-- Тестовые данные доступны для демонстрации всех функций
-
-🌐 **Production деплой:**
+🌐 **Production deployment:**
 - URL: https://console.vaadbot.com
 - Backend API: https://console.vaadbot.com/api/health
-- SSL: ✅ Настроен (Let's Encrypt через Certbot)
-- Статус: ✅ Работает
-- Домен: `console.vaadbot.com`
+- SSL: ✅ Configured (Let's Encrypt via Certbot)
+- Status: ✅ Working
+- Domain: `console.vaadbot.com`
 
-**Инфраструктура:**
-- Frontend: Nginx (статический сайт)
-- Backend: Node.js/Express через PM2
+**Infrastructure:**
+- Frontend: Nginx (static site)
+- Backend: Node.js/Express via PM2
 - Database: PostgreSQL
-- SSL: Let's Encrypt (автообновление)
+- SSL: Let's Encrypt (auto-update)
 
 ---
 
 ## 🤝 Contributing
 
-Мы приветствуем вклад в проект! Если вы хотите помочь улучшить DevConsole:
+We welcome contributions! If you want to help improve DevConsole:
 
-1. Fork репозиторий
-2. Создайте ветку для вашей функции (`git checkout -b feature/amazing-feature`)
-3. Зафиксируйте изменения (`git commit -m 'Add some amazing feature'`)
-4. Отправьте в ветку (`git push origin feature/amazing-feature`)
-5. Откройте Pull Request
+1. Fork the repository
+2. Create a branch for your feature (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-Перед отправкой PR убедитесь, что:
-- Код соответствует стилю проекта
-- Все тесты проходят (если есть)
-- Вы обновили документацию при необходимости
-
----
-
-## 🙏 Благодарности
-
-Спасибо всем, кто внёс вклад в развитие DevConsole!
+Before submitting a PR, make sure:
+- Code follows the project style
+- All tests pass (if any)
+- You updated documentation if necessary
 
 ---
 
-## 📄 Лицензия
+## 🙏 Acknowledgments
 
-Этот проект распространяется под лицензией MIT. Подробности см. в файле [LICENSE](LICENSE).
-
-### Что это значит?
-
-MIT лицензия является одной из самых разрешительных open source лицензий. Вы можете:
-
-- ✅ Использовать проект в коммерческих целях
-- ✅ Модифицировать и изменять код
-- ✅ Распространять проект
-- ✅ Использовать в приватных проектах
-- ✅ Размещать код в продакшене
-
-**Единственное требование:** сохранять копирайт и текст лицензии в распространяемых файлах.
+Thanks to everyone who contributed to DevConsole development!
 
 ---
 
-## 🔗 Полезные ссылки
+## 📄 License
 
-- **AI Studio:** https://ai.studio/apps/drive/18pnk0y-W2e4IoP3rMl6LBVEXmHUwII5Q
+This project is distributed under the MIT license. See the [LICENSE](LICENSE) file for details.
+
+### What does this mean?
+
+The MIT license is one of the most permissive open source licenses. You can:
+
+- ✅ Use the project for commercial purposes
+- ✅ Modify and change the code
+- ✅ Distribute the project
+- ✅ Use in private projects
+- ✅ Deploy code to production
+
+**The only requirement:** maintain the copyright and license text in distributed files.
+
+---
+
+## 🔗 Useful Links
+
 - **Vite:** https://vitejs.dev/
 - **React Router:** https://reactrouter.com/
 
 ---
 
-## 👨‍💻 Разработка
+## 👨‍💻 Development
 
-### Структура разработки
+### Development Structure
 
-1. Все компоненты в папке `components/`
-2. Страницы в папке `pages/`
-3. Сервисы в папке `services/`
-4. Типы в `types.ts`
-5. Константы в `constants.ts`
+1. All components in `components/` folder
+2. Pages in `pages/` folder
+3. Services in `services/` folder
+4. Types in `types.ts`
+5. Constants in `constants.ts`
 
-### Стиль кода
+### Code Style
 
-- TypeScript для типизации
-- Functional Components с Hooks
-- Именование: PascalCase для компонентов, camelCase для функций
-- Комментарии на английском в коде
+- TypeScript for typing
+- Functional Components with Hooks
+- Naming: PascalCase for components, camelCase for functions
+- Comments in English in code
 
 ---
 
-**DevConsole v3.0** — Full-Stack приложение для управления задачами в стиле киберпанка 🚀
+**DevConsole v3.0** — Full-Stack task management application in cyberpunk style 🚀
 
-**Архитектура:** Frontend (React) + Backend API (Node.js/Express) + PostgreSQL + AI (Gemini) + Telegram
+**Architecture:** Frontend (React) + Backend API (Node.js/Express) + PostgreSQL + Telegram
 
-**Ключевые технологии:**
+**Key Technologies:**
 - React 19 + TypeScript + Vite
 - Express.js + PostgreSQL
-- JWT авторизация + Rate limiting
+- JWT authorization + Rate limiting
 - Telegram Bot API
 - Code splitting + Performance optimization
 
-**Статус:** ✅ Production Ready
+**Status:** ✅ Production Ready

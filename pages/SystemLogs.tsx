@@ -10,7 +10,7 @@ export const SystemLogs: React.FC = () => {
     const allLogs = useMemo(() => {
         // Aggregate all logs from all tasks
         const logs = tasks.flatMap(task => {
-            // Обрабатываем случаи когда activityLog может быть null, undefined, или не массивом
+            // Handle cases where activityLog may be null, undefined, or not an array
             const activityLog = Array.isArray(task.activityLog) ? task.activityLog : [];
             return activityLog.map(log => ({
                 ...log,

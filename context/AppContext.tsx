@@ -55,12 +55,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Start with empty arrays if we're checking API, to avoid showing LocalStorage data
   // If API is not available, we'll load from LocalStorage in useEffect
   const [users, setUsers] = useState<User[]>([]);
-  const [allTasks, setAllTasks] = useState<Task[]>([]); // Все задачи (без фильтрации)
-  const [allProjects, setAllProjects] = useState<Project[]>([]); // Все проекты (без фильтрации)
+  const [allTasks, setAllTasks] = useState<Task[]>([]); // All tasks (unfiltered)
+  const [allProjects, setAllProjects] = useState<Project[]>([]); // All projects (unfiltered)
   const [snippets, setSnippets] = useState<Snippet[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   
-  // Фильтрованные данные для VIEWER (используем useMemo для правильной реактивности)
+  // Filtered data for VIEWER (use useMemo for proper reactivity)
   const tasks = useMemo(() => {
     return currentUser?.role === Role.VIEWER && currentUser.allowedProjects
       ? allTasks.filter(task => currentUser.allowedProjects!.includes(task.projectId))
@@ -159,7 +159,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const updatedUser = { ...currentUser };
     let newXp = updatedUser.xp;
 
-    // Получаем список уже показанных достижений из sessionStorage
+    // Get list of already shown achievements from sessionStorage
     const shownAchievements = JSON.parse(sessionStorage.getItem('devconsole_shown_achievements') || '[]');
 
     ACHIEVEMENTS.forEach(ach => {
@@ -169,7 +169,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 newXp += ach.xpBonus;
                 hasNewAchievements = true;
                 
-                // Показываем уведомление только если это достижение еще не было показано в этой сессии
+                // Show notification only if this achievement hasn't been shown in this session yet
                 if (!shownAchievements.includes(ach.id)) {
                     showNotification(`ACHIEVEMENT UNLOCKED: ${ach.title} (+${ach.xpBonus} XP)`, 'success');
                     SoundService.playSuccess();
@@ -342,7 +342,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (error) {
       console.error('Failed to create task:', error);
       console.error('Task that failed:', task);
-      // Не добавляем задачу в состояние если она не сохранилась в базу
+      // Don't add task to state if it didn't save to database
       showNotification('Failed to create task: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error');
     }
   };
@@ -361,7 +361,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const subtasks = updatedTask.subtasks || [];
     updatedTask.progress = calculateTaskProgress(subtasks);
 
-    // Убеждаемся что activityLog это массив
+    // Ensure activityLog is an array
     const currentTask = tasks.find(t => t.id === updatedTask.id);
     const existingLogs = Array.isArray(updatedTask.activityLog) ? [...updatedTask.activityLog] : (Array.isArray(currentTask?.activityLog) ? [...currentTask.activityLog] : []);
     const logs = [...existingLogs];
@@ -420,13 +420,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           trackFieldChange('status', currentTask.status, updatedTask.status, `Changed status from ${currentTask.status} to ${updatedTask.status}`);
 
           if (updatedTask.status === TaskStatus.DONE && currentTask.status !== TaskStatus.DONE) {
-            // Устанавливаем дату завершения при изменении статуса на DONE
+            // Set completion date when status changes to DONE
             updatedTask.completedAt = Date.now();
             xpGained = 150; 
             if (currentTask.priority === Priority.HIGH) xpGained += 100;
             if (currentTask.priority === Priority.CRITICAL) xpGained += 250;
           } else if (updatedTask.status !== TaskStatus.DONE && currentTask.status === TaskStatus.DONE) {
-            // Очищаем дату завершения если статус изменился с DONE на другой
+            // Clear completion date if status changed from DONE to another
             updatedTask.completedAt = null;
           }
         }
@@ -488,13 +488,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
     }
 
-    // Объединяем обновленную задачу с логами
+    // Merge updated task with logs
     const taskWithLogs = { ...updatedTask, activityLog: logs };
 
     try {
       if (useAPI && apiChecked) {
         const savedTask = await apiService.updateTask(updatedTask.id, taskWithLogs);
-        // Используем задачу, возвращенную с сервера, чтобы гарантировать синхронизацию
+        // Use task returned from server to ensure synchronization
         setAllTasks(prev => prev.map(t => t.id === updatedTask.id ? savedTask : t));
         return savedTask; // Return saved task for promise resolution
       } else {
@@ -503,7 +503,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     } catch (error) {
       console.error('Failed to update task:', error);
-      // В случае ошибки все равно обновляем локально
+      // In case of error, still update locally
       setAllTasks(prev => prev.map(t => t.id === updatedTask.id ? taskWithLogs : t));
       throw error; // Re-throw error so caller can handle it
     }
@@ -744,26 +744,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           return;
       }
 
-      // Правильная проверка timerStartedAt (может быть number, null, или строка)
+      // Proper check of timerStartedAt (can be number, null, or string)
       const timerStartedAt = typeof task.timerStartedAt === 'string' 
         ? (task.timerStartedAt === 'null' || task.timerStartedAt === '' ? null : parseInt(task.timerStartedAt, 10))
         : task.timerStartedAt;
       
       const isTimerActive = timerStartedAt != null && !isNaN(timerStartedAt) && timerStartedAt > 0;
       
-      // Подготовка activityLog
+      // Prepare activityLog
       const activityLog = Array.isArray(task.activityLog) ? [...task.activityLog] : [];
       
       let updatedTask: Task;
       
       if (isTimerActive) {
-          // Останавливаем таймер - добавляем прошедшее время к timeSpent
+          // Stop timer - add elapsed time to timeSpent
           const elapsed = (Date.now() - timerStartedAt!) / 1000;
           const elapsedMinutes = Math.floor(elapsed / 60);
           const elapsedSeconds = Math.floor(elapsed % 60);
           SoundService.playStopTimer();
           
-          // Добавляем лог об остановке таймера
+          // Add log for timer stop
           activityLog.push({
               id: `l${Date.now()}_timer_stop`,
               userId: currentUser?.id || 'system',
@@ -779,10 +779,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           };
           console.log('Stopping timer. Elapsed:', elapsed, 'Total time:', updatedTask.timeSpent);
       } else {
-          // Запускаем таймер
+          // Start timer
           SoundService.playStartTimer();
           
-          // Добавляем лог о запуске таймера
+          // Add log for timer start
           activityLog.push({
               id: `l${Date.now()}_timer_start`,
               userId: currentUser?.id || 'system',
@@ -798,10 +798,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           console.log('Starting timer at:', updatedTask.timerStartedAt);
       }
       
-      // Сначала обновляем локальное состояние для мгновенной реакции UI
+      // First update local state for instant UI reaction
           setAllTasks(prev => prev.map(t => t.id === taskId ? updatedTask : t));
       
-      // Затем сохраняем в базу данных
+      // Then save to database
       try {
           if (useAPI && apiChecked) {
               await apiService.updateTask(taskId, updatedTask);
@@ -810,7 +810,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } catch (error) {
           console.error('Failed to save timer:', error);
           showNotification('Failed to save timer', 'error');
-          // Откатываем изменение при ошибке
+          // Rollback change on error
           setAllTasks(prev => prev.map(t => t.id === taskId ? task : t));
       }
   };

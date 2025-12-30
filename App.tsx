@@ -91,16 +91,6 @@ const AppRoutes = () => {
           </ProtectedRoute>
         } />
 
-        <Route path="/terminal" element={
-          <ProtectedRoute>
-            <Layout>
-              <Suspense fallback={<LoadingFallback />}>
-                <TerminalPage />
-              </Suspense>
-            </Layout>
-          </ProtectedRoute>
-        } />
-
         <Route path="/snippets" element={
           <ProtectedRoute>
             <Layout>

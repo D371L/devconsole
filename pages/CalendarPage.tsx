@@ -24,7 +24,7 @@ export const CalendarPage: React.FC = () => {
     days.push(new Date(year, month, i));
   }
 
-  // Получение задач, созданных в указанную дату
+  // Get tasks created on the specified date
   const getTasksCreatedOn = (date: Date): Task[] => {
     return tasks.filter(task => {
       const createdDate = new Date(task.createdAt);
@@ -32,7 +32,7 @@ export const CalendarPage: React.FC = () => {
     });
   };
 
-  // Получение задач, перешедших в IN_PROGRESS в указанную дату
+  // Get tasks that changed to IN_PROGRESS on the specified date
   const getTasksInProgressOn = (date: Date): Task[] => {
     return tasks.filter(task => {
       if (!Array.isArray(task.activityLog)) return false;
@@ -45,7 +45,7 @@ export const CalendarPage: React.FC = () => {
     });
   };
 
-  // Получение задач с дедлайном на указанную дату
+  // Get tasks with deadline on the specified date
   const getTasksWithDeadlineOn = (date: Date): Task[] => {
     return tasks.filter(task => {
       if (!task.deadline) return false;
@@ -54,7 +54,7 @@ export const CalendarPage: React.FC = () => {
     });
   };
 
-  // Получение всех событий для указанной даты
+  // Get all events for the specified date
   const getEventsForDate = (date: Date) => {
     return {
       created: getTasksCreatedOn(date),
@@ -63,7 +63,7 @@ export const CalendarPage: React.FC = () => {
     };
   };
 
-  // Проверка наличия событий на дате
+  // Check for events on date
   const hasEventsOnDate = (date: Date): { created: boolean; inProgress: boolean; deadlines: boolean } => {
     const events = getEventsForDate(date);
     return {
@@ -93,7 +93,7 @@ export const CalendarPage: React.FC = () => {
         </p>
       </div>
 
-      {/* Calendar - компактный, по центру */}
+      {/* Calendar - compact, centered */}
       <div className="flex justify-center mb-6">
         <div className="bg-white dark:bg-black border border-gray-200 dark:border-gray-800 rounded-lg dark:rounded-none shadow-sm p-4 max-w-md w-full">
           <div className="flex items-center justify-between mb-3">

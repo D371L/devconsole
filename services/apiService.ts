@@ -1,12 +1,12 @@
 import { User, Task, Project, Snippet, Comment } from '../types';
 
-// API URL - будет автоматически подставлен DigitalOcean или локальный для разработки
-// Если VITE_API_URL начинается с /, используем относительный путь (для VPS через Nginx)
-// Иначе используем полный URL
+// API URL - will be automatically set to DigitalOcean or local for development
+// If VITE_API_URL starts with /, use relative path (for VPS via Nginx)
+// Otherwise use full URL
 const getApiUrl = () => {
   const envUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
   if (envUrl.startsWith('/')) {
-    // Относительный путь - используется через Nginx
+    // Relative path - used via Nginx
     return envUrl;
   }
   return envUrl;
@@ -275,7 +275,7 @@ class ApiService {
 
   // ========== HEALTH CHECK ==========
   async healthCheck(): Promise<{ status: string; timestamp: string }> {
-    // Health check через Nginx proxy
+    // Health check via Nginx proxy
     try {
       const response = await fetch('/api/health');
       if (!response.ok) {

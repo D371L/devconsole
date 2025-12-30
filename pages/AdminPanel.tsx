@@ -165,7 +165,7 @@ export const AdminPanel: React.FC = () => {
                 </div>
             </div>
 
-            {/* Project Access - только для VIEWER */}
+            {/* Project Access - only for VIEWER */}
             {newUser.role === Role.VIEWER && (
               <div>
                 <label className="block text-xs font-bold text-gray-700 dark:text-gray-500 uppercase tracking-wider mb-2">Project Access</label>

@@ -71,17 +71,17 @@ export const TaskDetail: React.FC<{ isNew?: boolean }> = ({ isNew }) => {
     if (!isNew && id) {
       const existingTask = tasks.find(t => t.id === id);
       if (existingTask) {
-        // Проверка доступа VIEWER к проекту задачи
+        // Check VIEWER access to task project
         if (isViewer && currentUser?.allowedProjects && !currentUser.allowedProjects.includes(existingTask.projectId)) {
           showNotification('Access denied: You do not have access to this project', 'error');
           navigate('/dashboard');
           return;
         }
-        // Проверяем это первая загрузка задачи или обновление
+        // Check if this is first task load or update
         const isFirstLoad = !formData.id || formData.id !== id;
         
         if (isFirstLoad) {
-          // Первая загрузка - проверяем таймер и останавливаем если был запущен
+          // First load - check timer and stop if it was running
           const timerStartedAt = typeof existingTask.timerStartedAt === 'string' 
             ? (existingTask.timerStartedAt === 'null' || existingTask.timerStartedAt === '' ? null : parseInt(existingTask.timerStartedAt, 10))
             : existingTask.timerStartedAt;
@@ -90,7 +90,7 @@ export const TaskDetail: React.FC<{ isNew?: boolean }> = ({ isNew }) => {
             const timerAge = Date.now() - timerStartedAt;
             const elapsed = Math.max(0, timerAge / 1000);
             
-            // Останавливаем таймер при первой загрузке задачи
+            // Stop timer on first task load
             const updatedTask = {
               ...existingTask,
               timerStartedAt: null,
@@ -103,8 +103,8 @@ export const TaskDetail: React.FC<{ isNew?: boolean }> = ({ isNew }) => {
           }
         }
         
-        // Не первая загрузка - просто синхронизируем formData с tasks
-        // Это позволяет таймеру работать после toggleTaskTimer
+        // Not first load - just sync formData with tasks
+        // This allows timer to work after toggleTaskTimer
         setFormData(existingTask);
       } else {
         navigate('/dashboard');
@@ -125,7 +125,7 @@ export const TaskDetail: React.FC<{ isNew?: boolean }> = ({ isNew }) => {
       let interval: ReturnType<typeof setInterval> | undefined;
       let autoSaveInterval: ReturnType<typeof setInterval> | undefined;
       
-      // Проверяем что timerStartedAt валидное число (не null, не undefined, не строка "null")
+      // Check that timerStartedAt is a valid number (not null, not undefined, not string "null")
       const timerStartedAt = typeof formData.timerStartedAt === 'string' 
         ? (formData.timerStartedAt === 'null' || formData.timerStartedAt === '' ? null : parseInt(formData.timerStartedAt, 10))
         : formData.timerStartedAt;
@@ -159,17 +159,17 @@ export const TaskDetail: React.FC<{ isNew?: boolean }> = ({ isNew }) => {
                         ? (task.timerStartedAt === 'null' || task.timerStartedAt === '' ? null : parseInt(task.timerStartedAt, 10))
                         : task.timerStartedAt;
                       
-                      // Проверяем что таймер все еще активен перед автосохранением
+                      // Check that timer is still active before auto-save
                       if (taskTimerStartedAt != null && !isNaN(taskTimerStartedAt) && taskTimerStartedAt > 0) {
                           const elapsed = (Date.now() - taskTimerStartedAt) / 1000;
                           const updatedTask = {
                               ...task,
                               timeSpent: (task.timeSpent || 0) + elapsed,
-                              timerStartedAt: Date.now() // Обновляем время старта для следующего интервала
+                              timerStartedAt: Date.now() // Update start time for next interval
                           };
                           try {
                               await updateTask(updatedTask);
-                              // Обновляем formData чтобы синхронизировать
+                              // Update formData to sync
                               setFormData(prev => ({ ...prev, ...updatedTask }));
                           } catch (error) {
                               console.error('Failed to auto-save timer:', error);
@@ -177,9 +177,9 @@ export const TaskDetail: React.FC<{ isNew?: boolean }> = ({ isNew }) => {
                       }
                   }
               }
-          }, 30000); // 30 секунд
+          }, 30000); // 30 seconds
       } else {
-          // Таймер остановлен - просто показываем сохраненное время, не обновляем
+          // Timer stopped - just show saved time, don't update
           setLiveTimeSpent(formData.timeSpent || 0);
       }
       
@@ -231,7 +231,7 @@ export const TaskDetail: React.FC<{ isNew?: boolean }> = ({ isNew }) => {
     }
   }, [debouncedFormData, id, isNew, isViewer, tasks, updateTask]);
   
-  // Сохраняем время при уходе со страницы
+  // Save time when leaving the page
   useEffect(() => {
       const handleBeforeUnload = async () => {
           const timerStartedAt = typeof formData.timerStartedAt === 'string' 
@@ -250,7 +250,7 @@ export const TaskDetail: React.FC<{ isNew?: boolean }> = ({ isNew }) => {
                       const updatedTask = {
                           ...task,
                           timeSpent: (task.timeSpent || 0) + elapsed,
-                          timerStartedAt: null // Останавливаем таймер при закрытии
+                          timerStartedAt: null // Stop timer on close
                       };
                       try {
                           await updateTask(updatedTask);
@@ -654,8 +654,8 @@ export const TaskDetail: React.FC<{ isNew?: boolean }> = ({ isNew }) => {
       try {
           await toggleTaskTimer(id);
           
-          // Принудительно обновляем formData после изменения таймера
-          // Ждем немного чтобы tasks успел обновиться
+          // Force update formData after timer change
+          // Wait a bit for tasks to update
           setTimeout(() => {
               const updatedTask = tasks.find(t => t.id === id);
               if (updatedTask) {
@@ -1095,7 +1095,7 @@ export const TaskDetail: React.FC<{ isNew?: boolean }> = ({ isNew }) => {
                                         <>
                                             <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{renderCommentText(comment.text)}</p>
                                             
-                                            {/* Reactions - показать при наведении */}
+                                            {/* Reactions - show on hover */}
                                             <div className="flex items-center gap-2 flex-wrap opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                                                 {Object.entries(comment.reactions || {}).length > 0 && (
                                                     <>
@@ -1228,7 +1228,7 @@ export const TaskDetail: React.FC<{ isNew?: boolean }> = ({ isNew }) => {
                      <span>CREATED:</span>
                      <span>{(() => {
                          if (!formData.createdAt) return 'N/A';
-                         // Преобразуем в число если это строка (PostgreSQL BIGINT может быть строкой)
+                         // Convert to number if it's a string (PostgreSQL BIGINT can be a string)
                          const timestamp = typeof formData.createdAt === 'string' 
                              ? parseInt(formData.createdAt, 10) 
                              : Number(formData.createdAt);

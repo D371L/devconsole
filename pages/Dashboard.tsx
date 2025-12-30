@@ -31,7 +31,7 @@ export const Dashboard: React.FC = () => {
 
   const isViewer = currentUser?.role === Role.VIEWER;
 
-  // Функция для получения значения поля для сортировки
+  // Function to get field value for sorting
   const getSortValue = (task: Task, field: SortField): string | number => {
     switch (field) {
       case 'id':
@@ -57,12 +57,12 @@ export const Dashboard: React.FC = () => {
   const filteredTasks = useMemo(() => {
     let result = tasks;
     
-    // Для VIEWER без доступа к проектам - пустой список
+    // For VIEWER without project access - empty list
     if (isViewer && (!currentUser?.allowedProjects || currentUser.allowedProjects.length === 0)) {
         return [];
     }
     
-    // Поиск по названию и описанию
+    // Search by title and description
     if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
         result = result.filter(t => 
@@ -87,7 +87,7 @@ export const Dashboard: React.FC = () => {
         result = result.filter(t => t.assignedTo === filterAssignee);
     }
 
-    // Фильтр по дедлайну
+    // Filter by deadline
     if (filterDeadline !== 'ALL') {
         const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -115,7 +115,7 @@ export const Dashboard: React.FC = () => {
         });
     }
 
-    // Сортировка
+    // Sorting
     result = [...result].sort((a, b) => {
         const aValue = getSortValue(a, sortField);
         const bValue = getSortValue(b, sortField);
@@ -134,7 +134,7 @@ export const Dashboard: React.FC = () => {
     return result;
   }, [tasks, filterStatus, filterProject, filterPriority, filterAssignee, filterDeadline, searchQuery, sortField, sortOrder, isViewer, currentUser]);
 
-  // Обновление URL параметров при изменении фильтров
+  // Update URL parameters when filters change
   useEffect(() => {
     const params = new URLSearchParams();
     if (searchQuery) params.set('search', searchQuery);
