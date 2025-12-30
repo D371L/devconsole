@@ -139,7 +139,6 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           {currentUser?.role !== Role.VIEWER && (
              <NavItem to="/create-task" label="New Task" />
           )}
-          <NavItem to="/terminal" label="AI Terminal" />
           <NavItem to="/snippets" label="Code Vault" />
           <NavItem to="/logs" label="System Logs" />
           <NavItem to="/leaderboard" label="Hall of Fame" />
@@ -304,7 +303,6 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                         {currentUser?.role !== Role.VIEWER && (
                             <NavItem to="/create-task" label="New Task" onClick={() => setMobileMenuOpen(false)} />
                         )}
-                        <NavItem to="/terminal" label="AI Terminal" onClick={() => setMobileMenuOpen(false)} />
                         <NavItem to="/snippets" label="Code Vault" onClick={() => setMobileMenuOpen(false)} />
                         <NavItem to="/logs" label="System Logs" onClick={() => setMobileMenuOpen(false)} />
                         <NavItem to="/leaderboard" label="Hall of Fame" onClick={() => setMobileMenuOpen(false)} />

@@ -41,7 +41,6 @@ export const CommandPalette: React.FC = () => {
     { id: 'home', label: 'Go to Dashboard', icon: '⚡', action: () => navigate('/dashboard') },
     // Only allow task creation for non-viewers
     ...(currentUser?.role !== Role.VIEWER ? [{ id: 'new-task', label: 'Create New Directive', icon: '+', action: () => navigate('/create-task') }] : []),
-    { id: 'terminal', label: 'Launch AI Terminal', icon: '>', action: () => navigate('/terminal') },
     { id: 'snippets', label: 'Open Code Vault', icon: '{}', action: () => navigate('/snippets') },
     { id: 'logs', label: 'View System Logs', icon: '≣', action: () => navigate('/logs') },
     { id: 'theme', label: 'Toggle System Theme', icon: '◐', action: () => toggleTheme() },

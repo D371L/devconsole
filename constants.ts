@@ -8,8 +8,26 @@ export const INITIAL_USERS: User[] = [
     password: 'password', // Mock password
     role: Role.ADMIN,
     avatar: 'https://api.dicebear.com/9.x/pixel-art/svg?seed=admin_core',
-    xp: 0,
-    achievements: []
+    xp: 2500,
+    achievements: ['a1', 'a3']
+  },
+  {
+    id: 'u2',
+    username: 'dev_jane',
+    password: 'password',
+    role: Role.DEVELOPER,
+    avatar: 'https://api.dicebear.com/9.x/pixel-art/svg?seed=jane_dev',
+    xp: 1800,
+    achievements: ['a1', 'a2']
+  },
+  {
+    id: 'u3',
+    username: 'dev_john',
+    password: 'password',
+    role: Role.DEVELOPER,
+    avatar: 'https://api.dicebear.com/9.x/pixel-art/svg?seed=john_dev',
+    xp: 1200,
+    achievements: ['a1']
   }
 ];
 

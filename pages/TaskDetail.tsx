@@ -4,7 +4,6 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { TerminalButton, TerminalCard, TerminalInput, TerminalTextArea } from '../components/TerminalUI';
 import { Task, TaskStatus, Priority, Subtask, Role, Project } from '../types';
-import { analyzeTaskAndGetSubtasks, generateAsciiArt } from '../services/geminiService';
 import { SoundService } from '../services/soundService';
 import { useDebounce } from '../hooks/useDebounce';
 import { apiService } from '../services/apiService';
@@ -45,7 +44,6 @@ export const TaskDetail: React.FC<{ isNew?: boolean }> = ({ isNew }) => {
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingCommentText, setEditingCommentText] = useState('');
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [newTag, setNewTag] = useState('');
   const [selectedDependency, setSelectedDependency] = useState<string>('');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
@@ -803,16 +801,6 @@ export const TaskDetail: React.FC<{ isNew?: boolean }> = ({ isNew }) => {
                     className="text-lg font-medium flex-1"
                     disabled={isViewer}
                     />
-                    {!isViewer && (
-                        <button 
-                            type="button" 
-                            onClick={handleGenerateAscii}
-                            title="Generate ASCII Art Banner"
-                            className="px-3 bg-gray-100 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-800 text-xs font-mono"
-                        >
-                            TXT_ART
-                        </button>
-                    )}
                 </div>
               </div>
               <div>
@@ -834,24 +822,6 @@ export const TaskDetail: React.FC<{ isNew?: boolean }> = ({ isNew }) => {
           <TerminalCard title="EXECUTION_CHECKLIST" neonColor="purple">
               <div className="flex justify-between items-center mb-4">
                   <h4 className="text-sm font-bold text-gray-600 dark:text-gray-400">STEPS</h4>
-                  {!isViewer && (
-                    <button 
-                        type="button" 
-                        onClick={handleAiAnalysis}
-                        disabled={isAnalyzing}
-                        className="flex items-center gap-2 text-xs font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-neon-purple px-3 py-1.5 rounded dark:rounded-none border border-purple-200 dark:border-purple-800 hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors disabled:opacity-50"
-                    >
-                        {isAnalyzing ? (
-                            <>
-                            <span className="animate-spin">↻</span> PROCESSING...
-                            </>
-                        ) : (
-                            <>
-                            <span>✦</span> GEMINI_AUTO_GEN
-                            </>
-                        )}
-                    </button>
-                  )}
               </div>
 
               {/* Progress Bar */}

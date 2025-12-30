@@ -14,7 +14,6 @@ const AdminPanel = lazy(() => import('./pages/AdminPanel').then(module => ({ def
 const TaskDetail = lazy(() => import('./pages/TaskDetail').then(module => ({ default: module.TaskDetail })));
 const Snippets = lazy(() => import('./pages/Snippets').then(module => ({ default: module.Snippets })));
 const Leaderboard = lazy(() => import('./pages/Leaderboard').then(module => ({ default: module.Leaderboard })));
-const TerminalPage = lazy(() => import('./pages/TerminalPage').then(module => ({ default: module.TerminalPage })));
 const SystemLogs = lazy(() => import('./pages/SystemLogs').then(module => ({ default: module.SystemLogs })));
 
 // Loading fallback component

@@ -2,7 +2,6 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { TerminalButton, TerminalCard, TerminalInput, TerminalTextArea } from '../components/TerminalUI';
-import { auditCodeSnippet } from '../services/geminiService';
 import { SoundService } from '../services/soundService';
 import { Role } from '../types';
 
@@ -15,9 +14,6 @@ export const Snippets: React.FC = () => {
   
   const isViewer = currentUser?.role === Role.VIEWER;
 
-  // State for AI Audit results: map snippetId -> result string
-  const [auditResults, setAuditResults] = useState<Record<string, string>>({});
-  const [isAuditing, setIsAuditing] = useState<Record<string, boolean>>({});
 
   const filteredSnippets = useMemo(() => {
       if (!searchQuery) return snippets;
@@ -46,16 +42,6 @@ export const Snippets: React.FC = () => {
     SoundService.playSuccess();
   };
 
-  const handleAudit = async (id: string, code: string, lang: string) => {
-      setIsAuditing(prev => ({ ...prev, [id]: true }));
-      SoundService.playClick();
-      
-      const report = await auditCodeSnippet(code, lang);
-      
-      setAuditResults(prev => ({ ...prev, [id]: report }));
-      setIsAuditing(prev => ({ ...prev, [id]: false }));
-      SoundService.playNotification();
-  };
 
   return (
     <div className="animate-fade-in pb-10">
@@ -90,13 +76,6 @@ export const Snippets: React.FC = () => {
                                 </div>
                             </div>
                             <div className="flex gap-2">
-                                <button 
-                                    onClick={() => handleAudit(snippet.id, snippet.code, snippet.language)}
-                                    disabled={isAuditing[snippet.id]}
-                                    className="text-xs font-bold px-2 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors disabled:opacity-50"
-                                >
-                                    {isAuditing[snippet.id] ? '[ SCANNING... ]' : '[ AI_AUDIT ]'}
-                                </button>
                                 {!isViewer && (
                                     <button 
                                         onClick={() => deleteSnippet(snippet.id)}
@@ -111,16 +90,6 @@ export const Snippets: React.FC = () => {
                         <pre className="bg-gray-50 dark:bg-gray-900 p-4 rounded dark:rounded-none overflow-x-auto text-sm font-mono text-gray-700 dark:text-green-400 mb-2 border border-gray-200 dark:border-gray-800">
                             <code>{snippet.code}</code>
                         </pre>
-
-                        {/* Audit Result Panel */}
-                        {auditResults[snippet.id] && (
-                            <div className="mt-2 p-3 bg-gray-900 border-l-4 border-neon-cyan animate-fade-in">
-                                <div className="text-[10px] font-bold text-neon-cyan mb-1">AUDIT REPORT // GEMINI-2.5</div>
-                                <div className="text-xs text-gray-300 whitespace-pre-wrap font-mono leading-relaxed">
-                                    {auditResults[snippet.id]}
-                                </div>
-                            </div>
-                        )}
 
                         <div className="mt-2 text-[10px] text-gray-400 text-right font-mono">
                             ARCHIVED: {new Date(snippet.timestamp).toLocaleDateString()}
