@@ -949,6 +949,10 @@ For frontend-only deployment:
 
 ---
 
+## ⭐ Star This Project
+
+If you found DevConsole useful or interesting, please consider giving it a star on GitHub! It helps the project gain visibility and shows your support.
+
 ## 🤝 Contributing
 
 We welcome contributions! If you want to help improve DevConsole:

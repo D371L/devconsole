@@ -87,28 +87,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             apiService.getProjects().catch(() => []),
             apiService.getSnippets().catch(() => [])
           ]);
-          // Always use API data ONLY - no fallback to INITIAL
-          // If API returns empty, use empty arrays (fresh start)
+          // Use API data if available, otherwise fall back to INITIAL data (demo mode)
           setUsers(apiUsers.length > 0 ? apiUsers : INITIAL_USERS);
-          setAllTasks(apiTasks.length > 0 ? apiTasks : []);
-          setAllProjects(apiProjects.length > 0 ? apiProjects : []);
-          setSnippets(apiSnippets.length > 0 ? apiSnippets : []);
+          setAllTasks(apiTasks.length > 0 ? apiTasks : INITIAL_TASKS);
+          setAllProjects(apiProjects.length > 0 ? apiProjects : INITIAL_PROJECTS);
+          setSnippets(apiSnippets.length > 0 ? apiSnippets : INITIAL_SNIPPETS);
         } catch (err) {
           console.error('Failed to load from API:', err);
-          // If API fails, use INITIAL_USERS only (for admin), empty for rest
+          // If API fails, use INITIAL data for demo mode
           setUsers(INITIAL_USERS);
-          setAllTasks([]);
-          setAllProjects([]);
-          setSnippets([]);
+          setAllTasks(INITIAL_TASKS);
+          setAllProjects(INITIAL_PROJECTS);
+          setSnippets(INITIAL_SNIPPETS);
         }
       } catch (error) {
         console.error('API not available:', error);
         setUseAPI(false);
-        // API not available - use INITIAL_USERS only (for admin), empty for rest
+        // API not available - use INITIAL data for demo mode
         setUsers(INITIAL_USERS);
-        setAllTasks([]);
-        setAllProjects([]);
-        setSnippets([]);
+        setAllTasks(INITIAL_TASKS);
+        setAllProjects(INITIAL_PROJECTS);
+        setSnippets(INITIAL_SNIPPETS);
       } finally {
         setApiChecked(true);
         setIsCheckingAPI(false);
